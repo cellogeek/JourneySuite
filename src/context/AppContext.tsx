@@ -14,7 +14,8 @@ import DashboardPage from '@/components/pages/DashboardPage';
 import InventoryPage from '@/components/pages/InventoryPage';
 import EventManagementPage from '@/components/pages/EventManagementPage';
 import InvoicingPage from '@/components/pages/InvoicingPage';
-import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage'; // Import new page
+import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage';
+import CheckWriterPage from '@/components/pages/CheckWriterPage'; // Import new page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -68,7 +69,7 @@ const navGroupsData: NavGroup[] = [
     items: [
       { id: 'financial_dashboard', name: 'Financial Dashboard', icon: LayoutGrid, title: 'Financial Overview', description: "View key financial metrics, sales reports, and expense tracking.", component: GenericPlaceholderPage },
       { id: 'sales_tax_runner', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Runner', description: "Calculate and prepare sales tax reports for remittance.", component: SalesTaxRunnerPage },
-      { id: 'printer', name: 'Check & Envelope Printer', icon: Printer, title: 'Printing Services', description: "Print checks, envelopes, and other necessary documents.", component: GenericPlaceholderPage },
+      { id: 'check_writer', name: 'Check Writer', icon: Printer, title: 'Check & Envelope Printer', description: "Generate and print checks for vendors and other payees.", component: CheckWriterPage },
       { id: 'analytics', name: 'Data Analytics', icon: BarChart3, title: 'Data Analytics', description: "Analyze sales trends, customer behavior, and operational efficiency.", component: GenericPlaceholderPage },
     ],
   },
@@ -119,6 +120,3 @@ export const useAppContext = () => {
   }
   return context;
 };
-
-
-    
