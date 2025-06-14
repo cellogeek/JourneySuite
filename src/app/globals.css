@@ -1,106 +1,85 @@
+@import url('https://fonts.cdnfonts.com/css/geist-sans');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Brand colors based on coffee theme */
-/* Primary Background: #FAF8F5 (Light, creamy off-white) */
-/* Content Background (Cards/Modals): #FFFFFF (White) */
-/* Primary Text: #333333 (Dark charcoal) */
-/* Accent/Primary Buttons: #6F4E37 (Warm, deep coffee brown) */
-/* Success/Confirmation: #556B2F (Muted, earthy green) */
-/* Borders & Dividers: #E5E7EB (Light gray) */
-
 @layer base {
   :root {
-    --background: 33 33% 98%; /* #FAF8F5 Light creamy off-white */
-    --foreground: 0 0% 20%; /* #333333 Dark charcoal */
+    /* New Glassmorphism Theme Variables */
+    --background: 220 17% 97%; /* Light Gray (slate-50) */
+    --foreground: 222 21% 38%; /* Medium Slate (slate-600 for body) */
+    --heading-foreground: 222 47% 11%; /* Dark Slate (slate-900 for headings) */
 
-    --card: 0 0% 100%; /* #FFFFFF White */
-    --card-foreground: 0 0% 20%; /* #333333 Dark charcoal */
+    /* Cards are styled directly with bg-white/70 backdrop-blur-xl */
+    /* Popovers and Dialogs will also use similar glassmorphic styling */
 
-    --popover: 0 0% 100%; /* #FFFFFF White */
-    --popover-foreground: 0 0% 20%; /* #333333 Dark charcoal */
+    --primary: 207 90% 54%; /* Sky Blue (sky-500) - for accents, rings */
+    --primary-foreground: 0 0% 100%; /* White - for text on primary actions */
 
-    --primary: 26 34% 35%; /* #6F4E37 Warm, deep coffee brown */
-    --primary-foreground: 0 0% 100%; /* White for text on primary */
+    /* Secondary actions will use gradients directly, not a single HSL var */
 
-    --secondary: 30 10% 90%; /* Light gray/beige for secondary elements */
-    --secondary-foreground: 0 0% 20%; /* Dark charcoal */
+    --muted: 220 14% 92%; /* Lighter Slate (slate-100 or slate-200 based) for muted backgrounds */
+    --muted-foreground: 222 18% 55%; /* Medium Slate (slate-500 for muted text) */
 
-    --muted: 210 20% 95%; /* Lighter gray for muted text/elements */
-    --muted-foreground: 0 0% 40%; /* Mid-gray for muted text */
+    --accent: 207 90% 54%; /* Sky Blue (sky-500) */
+    --accent-foreground: 0 0% 100%; /* White */
 
-    --accent: 26 34% 35%; /* #6F4E37 Warm, deep coffee brown (can be same as primary) */
-    --accent-foreground: 0 0% 100%; /* White for text on accent */
+    --destructive: 0 72% 51%; /* Red-500 for destructive elements */
+    --destructive-foreground: 0 0% 100%; /* White */
+    --destructive-background: 0 79% 95%; /* Red-100 for destructive card backgrounds */
+    --destructive-border: 0 79% 81%; /* Red-300 for destructive borders */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 89%; /* Soft Slate (slate-200) */
+    --input-border: 220 13% 80%; /* Slate-300 for input borders */
+    --ring: 207 90% 54%; /* Sky Blue (sky-500 for focus rings) */
 
-    --success: 87 25% 37%; /* #556B2F Muted, earthy green */
-    --success-foreground: 0 0% 100%; /* White for text on success */
+    --radius: 0.75rem; /* Default radius, can be overridden (e.g. rounded-2xl for cards, rounded-full for buttons) */
 
-    --border: 220 13% 91%; /* #E5E7EB Light gray for borders */
-    --input: 220 13% 88%; /* Slightly darker for input borders */
-    --ring: 26 34% 35%; /* #6F4E37 Coffee brown for rings */
-
-    --chart-1: 26 76% 61%; /* Example chart colors, can be adjusted */
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-
-    /* Sidebar specific theme */
-    --sidebar-background: 0 0% 100%; /* #FFFFFF White sidebar */
-    --sidebar-foreground: 0 0% 20%; /* #333333 Dark charcoal text */
-    --sidebar-primary: 26 34% 35%; /* #6F4E37 Coffee brown for active item background */
-    --sidebar-primary-foreground: 0 0% 100%; /* White text on active item */
-    --sidebar-accent: 33 33% 96%; /* Very light beige/off-white for hover background #FAF0E6 or similar */
-    --sidebar-accent-foreground: 26 34% 25%; /* Darker coffee for hover text */
-    --sidebar-border: 220 13% 91%; /* #E5E7EB Light gray border */
-    --sidebar-ring: 26 34% 35%; /* Coffee brown for rings */
+    /* Sidebar specific theme (glassmorphic) */
+    /* Sidebar background achieved with bg-white/70 backdrop-blur-xl */
+    --sidebar-foreground: 222 21% 38%; /* Medium Slate (slate-600) */
+    --sidebar-active-background: 207 90% 54% / 0.1; /* Sky Blue (sky-500) with 10% opacity */
+    --sidebar-active-foreground: 207 90% 44%; /* Darker Sky Blue (sky-600 or 700) */
+    --sidebar-hover-background: 207 90% 54% / 0.05; /* Sky Blue (sky-500) with 5% opacity */
+    --sidebar-hover-foreground: 207 90% 50%; /* Sky Blue (sky-500 or slightly darker) */
+    --sidebar-border: 220 14% 89% / 0.8; /* Soft Slate (slate-200) with 80% opacity */
   }
 
   .dark {
-    /* Adjust dark theme variables if needed, or keep them similar if dark mode not primary focus */
-    --background: 0 0% 10%; /* Dark background */
-    --foreground: 0 0% 95%; /* Light text */
+    /* Define dark theme variables if needed, or keep light theme dominant */
+    /* For now, focusing on the light theme as per prompt */
+    --background: 222 47% 11%; /* Dark Slate (slate-900) */
+    --foreground: 220 17% 90%; /* Light Slate (slate-200 for body) */
+    --heading-foreground: 0 0% 98%; /* Near White (slate-50 for headings) */
 
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 95%;
+    /* Cards: bg-slate-800/70 backdrop-blur-xl */
+    
+    --primary: 207 90% 54%; /* Sky Blue (sky-500) */
+    --primary-foreground: 222 47% 11%; /* Dark Slate */
 
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 95%;
+    --muted: 222 47% 15%; /* Darker Slate */
+    --muted-foreground: 220 17% 75%; /* Lighter Slate */
 
-    --primary: 26 44% 55%; /* Lighter coffee brown for dark mode */
-    --primary-foreground: 0 0% 100%;
+    --accent: 207 90% 54%; /* Sky Blue */
+    --accent-foreground: 222 47% 11%;
 
-    --secondary: 30 10% 20%;
-    --secondary-foreground: 0 0% 95%;
+    --destructive: 0 63% 51%; /* Red-600 */
+    --destructive-foreground: 0 0% 98%;
+    --destructive-background: 0 63% 20%; 
+    --destructive-border: 0 63% 40%;
 
-    --muted: 210 10% 25%;
-    --muted-foreground: 0 0% 60%;
+    --border: 222 47% 25%; /* Slate-700 or 800 */
+    --input-border: 222 47% 30%; /* Slate-600 or 700 */
+    --ring: 207 90% 54%;
 
-    --accent: 26 44% 55%;
-    --accent-foreground: 0 0% 100%;
-
-    --success: 87 35% 57%; /* Lighter green */
-    --success-foreground: 0 0% 100%;
-
-    --border: 220 10% 30%;
-    --input: 220 10% 28%;
-    --ring: 26 44% 55%;
-
-    /* Dark Sidebar specific theme */
-    --sidebar-background: 0 0% 12%; /* Dark background for sidebar */
-    --sidebar-foreground: 0 0% 85%; /* Lighter text for dark sidebar */
-    --sidebar-primary: 26 44% 55%; /* Lighter coffee for active */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 18%; /* Darker hover background */
-    --sidebar-accent-foreground: 26 44% 75%; /* Lighter coffee for hover text */
-    --sidebar-border: 220 10% 25%;
-    --sidebar-ring: 26 44% 55%;
+    /* Dark Sidebar: bg-slate-800/70 backdrop-blur-xl */
+    --sidebar-foreground: 220 17% 90%;
+    --sidebar-active-background: 207 90% 54% / 0.15;
+    --sidebar-active-foreground: 207 90% 64%;
+    --sidebar-hover-background: 207 90% 54% / 0.1;
+    --sidebar-hover-foreground: 207 90% 58%;
+    --sidebar-border: 222 47% 25% / 0.8;
   }
 }
 
@@ -110,16 +89,61 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Geist Sans', 'SF Pro Text', system-ui, sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-heading-foreground;
   }
 }
 
 @layer utilities {
-  .title-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
+  .title-fade-in { /* Kept for existing header title, can be replaced by fade-in-up if desired */
+    animation: fadeIn 0.5s ease-out forwards;
   }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+  .content-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+  }
+  .aurora-blob {
+    animation: blob 15s infinite ease-in-out;
+  }
+  .aurora-blob-delay-1 {
+    animation-delay: -3s;
+  }
+  .aurora-blob-delay-2 {
+    animation-delay: -6s;
+  }
+   .aurora-blob-delay-3 {
+    animation-delay: -9s;
+  }
+}
+
+@keyframes fadeIn { /* Kept for existing header title */
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(40px, -60px) scale(1.15);
+  }
+  66% {
+    transform: translate(-30px, 30px) scale(0.85);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
   }
 }

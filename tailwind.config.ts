@@ -11,97 +11,128 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
-        code: ['monospace'],
+        sans: ['Geist Sans', 'SF Pro Text', 'system-ui', 'sans-serif'],
+        body: ['Geist Sans', 'SF Pro Text', 'system-ui', 'sans-serif'],
+        headline: ['Geist Sans', 'SF Pro Text', 'system-ui', 'sans-serif'],
+        code: ['Geist Mono', 'monospace'], // Added Geist Mono for code
       },
       colors: {
-        background: 'hsl(var(--background))', // #FAF8F5
-        foreground: 'hsl(var(--foreground))', // #333333
-        card: {
-          DEFAULT: 'hsl(var(--card))', // #FFFFFF
-          foreground: 'hsl(var(--card-foreground))', // #333333
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        'heading-foreground': 'hsl(var(--heading-foreground))',
+        card: { // Card styling is primarily via direct classes like bg-white/70
+          DEFAULT: 'hsl(var(--background))', // Fallback, actual card style is glass
+          foreground: 'hsl(var(--foreground))',
         },
-        popover: {
-          DEFAULT: 'hsl(var(--popover))', // #FFFFFF
-          foreground: 'hsl(var(--popover-foreground))', // #333333
+        popover: { // Popover styling also glassmorphic
+          DEFAULT: 'hsl(var(--background))', // Fallback
+          foreground: 'hsl(var(--foreground))',
         },
-        primary: {
-          DEFAULT: 'hsl(var(--primary))', // #6F4E37 (Coffee Brown)
-          foreground: 'hsl(var(--primary-foreground))', // #FFFFFF
+        primary: { // Primary action color (Sky Blue)
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
-        secondary: { // A lighter brown or gray for secondary elements
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
+        secondary: { // For secondary actions, gradients used directly
+          DEFAULT: '#F97316', // Orange-500 as a base
+          foreground: '#FFFFFF', // White
         },
-        muted: { // Lighter gray for muted text/elements
+        muted: {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
-        accent: { // Can be same as primary or a different coffee theme accent
-          DEFAULT: 'hsl(var(--accent))', // #6F4E37
-          foreground: 'hsl(var(--accent-foreground))', // #FFFFFF
+        accent: { // Accent color (Sky Blue)
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
+          DEFAULT: 'hsl(var(--destructive))', // e.g., red-500
+          foreground: 'hsl(var(--destructive-foreground))', // e.g., white
+          background: 'hsl(var(--destructive-background))', // e.g., red-100
+          border: 'hsl(var(--destructive-border))', // e.g., red-300
         },
-        success: { // Earthy Green
-          DEFAULT: 'hsl(var(--success))',
-          foreground: 'hsl(var(--success-foreground))',
+        border: 'hsl(var(--border))', // Soft Slate
+        input: 'hsl(var(--input-border))', // Input border color
+        ring: 'hsl(var(--ring))', // Focus ring color (Sky Blue)
+        
+        // Specific colors from the palette for direct use if needed
+        'brand-sky': {
+          500: '#0EA5E9', // sky-500
         },
-        border: 'hsl(var(--border))', // #E5E7EB
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))', // #6F4E37
-        chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
+        'brand-blue': {
+          600: '#2563EB', // blue-600
         },
-        sidebar: { // Sidebar specific theme
-          DEFAULT: 'hsl(var(--sidebar-background))', // #FFFFFF
-          foreground: 'hsl(var(--sidebar-foreground))', // #333333
-          primary: 'hsl(var(--sidebar-primary))', // Coffee brown for active item background
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))', // White text on active
-          accent: 'hsl(var(--sidebar-accent))', // Light coffee/beige for hover
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))', // Dark coffee for hover text
-          border: 'hsl(var(--sidebar-border))', // #E5E7EB
-          ring: 'hsl(var(--sidebar-ring))', // Coffee brown
+        'brand-orange': {
+          500: '#F97316', // orange-500
+        },
+        'brand-amber': {
+          500: '#F59E0B', // amber-500
+        },
+        'brand-slate': {
+          50: '#F8FAFC',
+          200: '#E2E8F0',
+          300: '#CBD5E1',
+          500: '#64748B',
+          600: '#475569',
+          900: '#0F172A',
+        },
+        'brand-text-legend': '#005A9C',
+
+        // Sidebar colors (used by sidebar component variants)
+        sidebar: {
+          foreground: 'hsl(var(--sidebar-foreground))',
+          'active-background': 'hsl(var(--sidebar-active-background))',
+          'active-foreground': 'hsl(var(--sidebar-active-foreground))',
+          'hover-background': 'hsl(var(--sidebar-hover-background))',
+          'hover-foreground': 'hsl(var(--sidebar-hover-foreground))',
+          border: 'hsl(var(--sidebar-border))',
         },
       },
-      borderRadius: {
-        lg: 'var(--radius)', // Typically 0.5rem for ShadCN default
+      borderRadius: { // Default is var(--radius), specific components use Tailwind classes
+        lg: 'var(--radius)', // Can be 0.75rem or 1rem for rounded-xl feel
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        '2xl': '1rem', // For cards
+        'full': '9999px', // For buttons
+      },
+      boxShadow: {
+        'soft-sky': '0 4px 14px 0 rgba(14, 165, 233, 0.20)', // shadow-sky-500/20
+        'soft-orange': '0 4px 14px 0 rgba(249, 115, 22, 0.20)', // shadow-orange-500/20
+        'xl': '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)', // Standard XL
+      },
+      backgroundImage: {
+        'primary-action-gradient': 'linear-gradient(to right, var(--tw-gradient-stops))',
+        'secondary-action-gradient': 'linear-gradient(to right, var(--tw-gradient-stops))',
       },
       keyframes: {
         'accordion-down': {
-          from: {
-            height: '0',
-          },
-          to: {
-            height: 'var(--radix-accordion-content-height)',
-          },
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
         },
         'accordion-up': {
-          from: {
-            height: 'var(--radix-accordion-content-height)',
-          },
-          to: {
-            height: '0',
-          },
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
         },
-        fadeIn: {
+        fadeIn: { /* Kept for existing header title */
           from: { opacity: '0', transform: 'translateY(10px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
+          to: { opacity: '1', transform: 'translateY(0px)' },
+        },
+        'fade-in-up': {
+          from: { opacity: '0', transform: 'translateY(20px)' },
+          to: { opacity: '1', transform: 'translateY(0px)' },
+        },
+        blob: {
+          '0%': { transform: 'translate(0px, 0px) scale(1)' },
+          '33%': { transform: 'translate(40px, -60px) scale(1.15)' },
+          '66%': { transform: 'translate(-30px, 30px) scale(0.85)' },
+          '100%': { transform: 'translate(0px, 0px) scale(1)' },
         },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'title-fade-in': 'fadeIn 0.3s ease-out forwards',
+        'title-fade-in': 'fadeIn 0.5s ease-out forwards',
+        'fade-in-up': 'fade-in-up 0.6s ease-out forwards',
+        'aurora-blob': 'blob 15s infinite ease-in-out',
       },
     },
   },

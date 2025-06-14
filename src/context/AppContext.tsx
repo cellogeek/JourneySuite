@@ -2,14 +2,14 @@
 "use client";
 
 import type { LucideIcon } from 'lucide-react';
-import React, { createContext, useState, useContext, ReactNode, useMemo } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react'; // Removed useMemo as it's not used here
 import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
-  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee
+  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon // Added HomeIcon
 } from 'lucide-react';
 
-// Import page components (create these files in src/components/pages/)
+// Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
 import InventoryPage from '@/components/pages/InventoryPage';
 import EventManagementPage from '@/components/pages/EventManagementPage';
@@ -22,8 +22,8 @@ export interface NavItemStructure {
   name: string;
   icon: LucideIcon;
   title: string;
-  description?: string; // For placeholder pages
-  component: React.ComponentType<{ pageId: string }>; // Pass pageId for generic placeholders
+  description?: string;
+  component: React.ComponentType<{ pageId: string }>;
 }
 
 export interface NavGroup {
@@ -38,11 +38,12 @@ interface AppContextType {
   getActivePage: () => NavItemStructure | undefined;
 }
 
+// Updated icon usage as per new guidelines (will be styled in SidebarMenuButton)
 const navGroupsData: NavGroup[] = [
   {
     groupLabel: 'Core',
     items: [
-      { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard, title: 'Dashboard', component: DashboardPage },
+      { id: 'dashboard', name: 'Dashboard', icon: HomeIcon, title: 'Dashboard', component: DashboardPage },
     ],
   },
   {
@@ -92,12 +93,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const item = group.items.find(navItem => navItem.id === activePageId);
       if (item) return item;
     }
-    return navGroupsData[0].items[0]; // Default to dashboard if not found
+    return navGroupsData[0].items[0]; // Default to dashboard
   };
 
-  // TODO: Add Firebase onAuthStateChanged listener here to manage auth state
-  // and potentially redirect to a login page or set user info.
-  // For now, we assume the user is authenticated.
+  // TODO: Add Firebase onAuthStateChanged listener here
 
   return (
     <AppContext.Provider value={{ activePageId, setActivePageId, navGroups: navGroupsData, getActivePage }}>

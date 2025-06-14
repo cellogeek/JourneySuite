@@ -5,8 +5,9 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // Badge component will use new styles
 import { FilePlus2, Filter } from 'lucide-react';
+import { cn } from '@/lib/utils'; // For conditional classes
 
 // TODO: Fetch data from Firestore collection 'invoices'
 const sampleInvoiceData = [
@@ -17,68 +18,63 @@ const sampleInvoiceData = [
   { id: 'INV-2024-005', clientName: 'Morning Perks', dateIssued: '2024-07-12', amount: 95.20, status: 'Unpaid', dataAiHint: "coffee cup takeout" },
 ];
 
-const getStatusBadgeVariant = (status: string) => {
+// Badge variants are now primarily handled by the Badge component itself based on its variant prop
+const getStatusBadgeVariant = (status: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
   switch (status.toLowerCase()) {
-    case 'paid': return 'default'; // Will use primary color (coffee brown) by default, let's make it success
-    case 'unpaid': return 'secondary'; // Or a custom variant
+    case 'paid': return 'success';
+    case 'unpaid': return 'secondary'; // Using a less prominent color like amber
     case 'overdue': return 'destructive';
     default: return 'outline';
   }
 };
-const getStatusBadgeClasses = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'paid': return 'bg-success text-success-foreground border-success';
-    case 'unpaid': return 'bg-amber-500 text-white border-amber-500'; // Using specific color for unpaid
-    case 'overdue': return 'bg-destructive text-destructive-foreground border-destructive';
-    default: return 'bg-muted text-muted-foreground border-border';
-  }
-}
-
 
 const InvoicingPage = ({ pageId }: { pageId: string }) => {
   return (
-    <Card className="shadow-lg bg-card text-card-foreground rounded-lg">
-      <CardHeader className="flex flex-row justify-between items-center">
-        <CardTitle className="text-2xl font-headline text-primary-text">Invoicing</CardTitle>
-        <div className="flex gap-2">
-          <Button variant="outline" className="border-primary text-primary hover:bg-primary/10 rounded-lg">
-            <Filter className="mr-2 h-4 w-4" /> Filter Invoices
+    <Card> {/* Glassmorphism applied by Card component */}
+      <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
+        <CardTitle className="text-2xl font-bold text-slate-900">Invoicing</CardTitle>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" className="text-sm rounded-lg py-2 px-4"> {/* Adjusted secondary button */}
+            <Filter size={16} className="mr-2 text-slate-400" /> Filter Invoices
           </Button>
           <Button 
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg"
+            variant="default" 
+            size="action"
             onClick={() => { /* TODO: Call Firebase function to create new invoice */ console.log("Create New Invoice"); }}
           >
-            <FilePlus2 className="mr-2 h-4 w-4" /> Create New Invoice
+            <FilePlus2 size={18} className="mr-2" /> Create New Invoice
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-muted/50">
-              <TableHead className="text-primary-text">Invoice #</TableHead>
-              <TableHead className="text-primary-text">Client Name</TableHead>
-              <TableHead className="text-primary-text">Date Issued</TableHead>
-              <TableHead className="text-primary-text">Amount</TableHead>
-              <TableHead className="text-primary-text">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sampleInvoiceData.map((invoice) => (
-              <TableRow key={invoice.id} className="hover:bg-muted/50 text-primary-text">
-                <TableCell>{invoice.id}</TableCell>
-                <TableCell>{invoice.clientName}</TableCell>
-                <TableCell>{invoice.dateIssued}</TableCell>
-                <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                <TableCell>
-                  <Badge className={cn("rounded-md", getStatusBadgeClasses(invoice.status))}>
-                    {invoice.status}
-                  </Badge>
-                </TableCell>
+        <div className="overflow-x-auto rounded-lg border border-brand-slate-200/80">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50 hover:bg-slate-100/50">
+                <TableHead>Invoice #</TableHead>
+                <TableHead>Client Name</TableHead>
+                <TableHead>Date Issued</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {sampleInvoiceData.map((invoice) => (
+                <TableRow key={invoice.id}>
+                  <TableCell className="font-medium text-slate-700">{invoice.id}</TableCell>
+                  <TableCell>{invoice.clientName}</TableCell>
+                  <TableCell>{invoice.dateIssued}</TableCell>
+                  <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge variant={getStatusBadgeVariant(invoice.status)} className="capitalize">
+                      {invoice.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
