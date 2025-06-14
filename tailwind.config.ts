@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -15,39 +16,43 @@ export default {
         code: ['monospace'],
       },
       colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        background: 'hsl(var(--background))', // #FAF8F5
+        foreground: 'hsl(var(--foreground))', // #333333
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'hsl(var(--card))', // #FFFFFF
+          foreground: 'hsl(var(--card-foreground))', // #333333
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: 'hsl(var(--popover))', // #FFFFFF
+          foreground: 'hsl(var(--popover-foreground))', // #333333
         },
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: 'hsl(var(--primary))', // #6F4E37 (Coffee Brown)
+          foreground: 'hsl(var(--primary-foreground))', // #FFFFFF
         },
-        secondary: {
+        secondary: { // A lighter brown or gray for secondary elements
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
         },
-        muted: {
+        muted: { // Lighter gray for muted text/elements
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
-        accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+        accent: { // Can be same as primary or a different coffee theme accent
+          DEFAULT: 'hsl(var(--accent))', // #6F4E37
+          foreground: 'hsl(var(--accent-foreground))', // #FFFFFF
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
-        border: 'hsl(var(--border))',
+        success: { // Earthy Green
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
+        },
+        border: 'hsl(var(--border))', // #E5E7EB
         input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        ring: 'hsl(var(--ring))', // #6F4E37
         chart: {
           '1': 'hsl(var(--chart-1))',
           '2': 'hsl(var(--chart-2))',
@@ -55,19 +60,19 @@ export default {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-background))',
-          foreground: 'hsl(var(--sidebar-foreground))',
-          primary: 'hsl(var(--sidebar-primary))',
-          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-          accent: 'hsl(var(--sidebar-accent))',
-          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-          border: 'hsl(var(--sidebar-border))',
-          ring: 'hsl(var(--sidebar-ring))',
+        sidebar: { // Sidebar specific theme
+          DEFAULT: 'hsl(var(--sidebar-background))', // #FFFFFF
+          foreground: 'hsl(var(--sidebar-foreground))', // #333333
+          primary: 'hsl(var(--sidebar-primary))', // Coffee brown for active item background
+          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))', // White text on active
+          accent: 'hsl(var(--sidebar-accent))', // Light coffee/beige for hover
+          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))', // Dark coffee for hover text
+          border: 'hsl(var(--sidebar-border))', // #E5E7EB
+          ring: 'hsl(var(--sidebar-ring))', // Coffee brown
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
+        lg: 'var(--radius)', // Typically 0.5rem for ShadCN default
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },

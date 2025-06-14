@@ -1,42 +1,50 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
+/* Brand colors based on coffee theme */
+/* Primary Background: #FAF8F5 (Light, creamy off-white) */
+/* Content Background (Cards/Modals): #FFFFFF (White) */
+/* Primary Text: #333333 (Dark charcoal) */
+/* Accent/Primary Buttons: #6F4E37 (Warm, deep coffee brown) */
+/* Success/Confirmation: #556B2F (Muted, earthy green) */
+/* Borders & Dividers: #E5E7EB (Light gray) */
 
 @layer base {
   :root {
-    --background: 0 0% 96%; /* Light gray #F5F5F5 */
-    --foreground: 0 0% 3.9%;
+    --background: 33 33% 98%; /* #FAF8F5 Light creamy off-white */
+    --foreground: 0 0% 20%; /* #333333 Dark charcoal */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card: 0 0% 100%; /* #FFFFFF White */
+    --card-foreground: 0 0% 20%; /* #333333 Dark charcoal */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%; /* #FFFFFF White */
+    --popover-foreground: 0 0% 20%; /* #333333 Dark charcoal */
 
-    --primary: 231 48% 48%; /* Deep indigo #3F51B5 */
-    --primary-foreground: 0 0% 100%; /* White */
+    --primary: 26 34% 35%; /* #6F4E37 Warm, deep coffee brown */
+    --primary-foreground: 0 0% 100%; /* White for text on primary */
 
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary: 30 10% 90%; /* Light gray/beige for secondary elements */
+    --secondary-foreground: 0 0% 20%; /* Dark charcoal */
 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted: 210 20% 95%; /* Lighter gray for muted text/elements */
+    --muted-foreground: 0 0% 40%; /* Mid-gray for muted text */
 
-    --accent: 260 44% 66%; /* Soft violet #9575CD */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 26 34% 35%; /* #6F4E37 Warm, deep coffee brown (can be same as primary) */
+    --accent-foreground: 0 0% 100%; /* White for text on accent */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 85%;
-    --input: 0 0% 89.8%;
-    --ring: 231 48% 48%; /* Primary color for rings */
+    --success: 87 25% 37%; /* #556B2F Muted, earthy green */
+    --success-foreground: 0 0% 100%; /* White for text on success */
 
-    --chart-1: 12 76% 61%;
+    --border: 220 13% 91%; /* #E5E7EB Light gray for borders */
+    --input: 220 13% 88%; /* Slightly darker for input borders */
+    --ring: 26 34% 35%; /* #6F4E37 Coffee brown for rings */
+
+    --chart-1: 26 76% 61%; /* Example chart colors, can be adjusted */
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
@@ -44,60 +52,55 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar specific theme */
-    --sidebar-background: 0 0% 100%; /* White sidebar */
-    --sidebar-foreground: 240 6% 25%; /* Dark gray text for sidebar */
-    --sidebar-primary: 231 48% 48%; /* Deep indigo for active item background */
+    --sidebar-background: 0 0% 100%; /* #FFFFFF White sidebar */
+    --sidebar-foreground: 0 0% 20%; /* #333333 Dark charcoal text */
+    --sidebar-primary: 26 34% 35%; /* #6F4E37 Coffee brown for active item background */
     --sidebar-primary-foreground: 0 0% 100%; /* White text on active item */
-    --sidebar-accent: 231 48% 95%; /* Very light indigo for hover background */
-    --sidebar-accent-foreground: 231 48% 48%; /* Deep indigo for hover text */
-    --sidebar-border: 0 0% 90%; /* Light gray border for sidebar elements */
-    --sidebar-ring: 231 48% 48%; /* Primary color for rings in sidebar */
+    --sidebar-accent: 33 33% 96%; /* Very light beige/off-white for hover background #FAF0E6 or similar */
+    --sidebar-accent-foreground: 26 34% 25%; /* Darker coffee for hover text */
+    --sidebar-border: 220 13% 91%; /* #E5E7EB Light gray border */
+    --sidebar-ring: 26 34% 35%; /* Coffee brown for rings */
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Adjust dark theme variables if needed, or keep them similar if dark mode not primary focus */
+    --background: 0 0% 10%; /* Dark background */
+    --foreground: 0 0% 95%; /* Light text */
 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 231 48% 55%; /* Adjusted primary for dark mode */
+    --primary: 26 44% 55%; /* Lighter coffee brown for dark mode */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 30 10% 20%;
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted: 210 10% 25%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 260 44% 70%; /* Adjusted accent for dark mode */
+    --accent: 26 44% 55%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --success: 87 35% 57%; /* Lighter green */
+    --success-foreground: 0 0% 100%;
 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 231 48% 55%; /* Adjusted ring for dark mode */
-
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --border: 220 10% 30%;
+    --input: 220 10% 28%;
+    --ring: 26 44% 55%;
 
     /* Dark Sidebar specific theme */
-    --sidebar-background: 240 5.9% 10%; /* Dark background for sidebar */
-    --sidebar-foreground: 0 0% 80%; /* Lighter text for dark sidebar */
-    --sidebar-primary: 231 48% 55%; /* Adjusted primary for dark active item */
-    --sidebar-primary-foreground: 0 0% 100%; /* White text on active */
-    --sidebar-accent: 240 3.7% 15.9%; /* Darker hover background */
-    --sidebar-accent-foreground: 231 48% 70%; /* Lighter indigo for hover text */
-    --sidebar-border: 240 3.7% 20%; /* Darker border for sidebar elements */
-    --sidebar-ring: 231 48% 55%; /* Adjusted ring for dark sidebar */
+    --sidebar-background: 0 0% 12%; /* Dark background for sidebar */
+    --sidebar-foreground: 0 0% 85%; /* Lighter text for dark sidebar */
+    --sidebar-primary: 26 44% 55%; /* Lighter coffee for active */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 10% 18%; /* Darker hover background */
+    --sidebar-accent-foreground: 26 44% 75%; /* Lighter coffee for hover text */
+    --sidebar-border: 220 10% 25%;
+    --sidebar-ring: 26 44% 55%;
   }
 }
 
@@ -107,6 +110,7 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 }
 

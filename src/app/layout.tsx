@@ -1,10 +1,11 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Journey Board',
-  description: 'Internal business suite dashboard',
+  title: 'Journey Suite',
+  description: 'Internal business management suite for a coffee company',
 };
 
 export default function RootLayout({
