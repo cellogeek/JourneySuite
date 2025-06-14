@@ -2,11 +2,11 @@
 "use client";
 
 import type { LucideIcon } from 'lucide-react';
-import React, { createContext, useState, useContext, ReactNode } from 'react'; // Removed useMemo as it's not used here
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
-  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon // Added HomeIcon
+  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon
 } from 'lucide-react';
 
 // Import page components
@@ -14,6 +14,7 @@ import DashboardPage from '@/components/pages/DashboardPage';
 import InventoryPage from '@/components/pages/InventoryPage';
 import EventManagementPage from '@/components/pages/EventManagementPage';
 import InvoicingPage from '@/components/pages/InvoicingPage';
+import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage'; // Import new page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -38,7 +39,6 @@ interface AppContextType {
   getActivePage: () => NavItemStructure | undefined;
 }
 
-// Updated icon usage as per new guidelines (will be styled in SidebarMenuButton)
 const navGroupsData: NavGroup[] = [
   {
     groupLabel: 'Core',
@@ -67,7 +67,7 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Financial & Clerical',
     items: [
       { id: 'financial_dashboard', name: 'Financial Dashboard', icon: LayoutGrid, title: 'Financial Overview', description: "View key financial metrics, sales reports, and expense tracking.", component: GenericPlaceholderPage },
-      { id: 'sales_tax', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Management', description: "Calculate and prepare sales tax reports for remittance.", component: GenericPlaceholderPage },
+      { id: 'sales_tax_runner', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Runner', description: "Calculate and prepare sales tax reports for remittance.", component: SalesTaxRunnerPage },
       { id: 'printer', name: 'Check & Envelope Printer', icon: Printer, title: 'Printing Services', description: "Print checks, envelopes, and other necessary documents.", component: GenericPlaceholderPage },
       { id: 'analytics', name: 'Data Analytics', icon: BarChart3, title: 'Data Analytics', description: "Analyze sales trends, customer behavior, and operational efficiency.", component: GenericPlaceholderPage },
     ],
@@ -93,7 +93,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const item = group.items.find(navItem => navItem.id === activePageId);
       if (item) return item;
     }
-    return navGroupsData[0].items[0]; // Default to dashboard
+    // Fallback to dashboard if activePageId is somehow invalid, or the first item of the first group
+    const firstGroup = navGroupsData[0];
+    if (firstGroup && firstGroup.items.length > 0) {
+        return firstGroup.items[0];
+    }
+    // As a very last resort, return undefined, though this case should ideally not be reached
+    // if navGroupsData is always populated.
+    return undefined;
   };
 
   // TODO: Add Firebase onAuthStateChanged listener here
@@ -112,3 +119,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+
+    
