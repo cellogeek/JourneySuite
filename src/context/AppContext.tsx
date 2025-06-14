@@ -15,7 +15,8 @@ import InventoryPage from '@/components/pages/InventoryPage';
 import EventManagementPage from '@/components/pages/EventManagementPage';
 import InvoicingPage from '@/components/pages/InvoicingPage';
 import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage';
-import CheckWriterPage from '@/components/pages/CheckWriterPage'; // Import new page
+import CheckWriterPage from '@/components/pages/CheckWriterPage';
+import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage'; // Import new page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -50,7 +51,7 @@ const navGroupsData: NavGroup[] = [
   {
     groupLabel: 'HR & Staff',
     items: [
-      { id: 'payroll', name: 'Payroll Runner', icon: Banknote, title: 'Payroll Runner', description: "Validate time entries and calculate tip pooling before exporting to Gusto.", component: GenericPlaceholderPage },
+      { id: 'payroll_runner', name: 'Payroll Runner', icon: Banknote, title: 'Payroll Runner', description: "Validate time entries and calculate tip pooling before exporting to Gusto.", component: PayrollRunnerPage }, // Updated component
       { id: 'onboarding', name: 'Onboarding', icon: UserPlus2, title: 'Onboarding Management', description: "Streamline new hire paperwork, training assignments, and initial setup.", component: GenericPlaceholderPage },
       { id: 'training', name: 'Training', icon: GraduationCap, title: 'Training Modules', description: "Manage and track employee training programs and certifications.", component: GenericPlaceholderPage },
       { id: 'employees', name: 'Employee Management', icon: Users, title: 'Employee Management', description: "Central hub for employee records, performance reviews, and HR information.", component: GenericPlaceholderPage },
@@ -97,10 +98,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     // Fallback to dashboard if activePageId is somehow invalid, or the first item of the first group
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
+        // Ensure 'dashboard' or the actual first item's ID is set if fallback occurs
+        const fallbackId = firstGroup.items[0].id;
+        if (activePageId !== fallbackId) {
+            // This part is tricky if called during render. Better to handle invalid ID upstream or set default correctly.
+            // For now, just return the first item found.
+        }
         return firstGroup.items[0];
     }
-    // As a very last resort, return undefined, though this case should ideally not be reached
-    // if navGroupsData is always populated.
     return undefined;
   };
 
@@ -120,3 +125,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+
+    
