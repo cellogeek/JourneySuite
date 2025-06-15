@@ -1,14 +1,17 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Minus, Trash2, Package, UserPlus, Library, Users } from 'lucide-react';
+import { Plus, Minus, Trash2, Package, UserPlus, Library, Users, Edit, Save, Search } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+
 
 interface SportLifeItem {
   id: string;
@@ -24,6 +27,12 @@ interface SportLifeCustomerOrder {
   processingFeePercent: number; 
 }
 
+interface SportLifeCatalogItem {
+  id: string;
+  itemName: string;
+  wholesaleCost: number;
+}
+
 
 const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const { currentUser } = useAppContext(); 
@@ -32,18 +41,29 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const [sixCarQuantity, setSixCarQuantity] = useState(1);
 
   // --- SportLife Nutrition State ---
-  // State for the current individual customer order being built
   const [currentSLCCustomerName, setCurrentSLCCustomerName] = useState('');
   const [currentSLCItems, setCurrentSLCItems] = useState<SportLifeItem[]>([]);
   const [currentSLCProcessingFee, setCurrentSLCProcessingFee] = useState(2);
-  
-  // State for the overall batch of customer orders
   const [sportLifeBatchOrders, setSportLifeBatchOrders] = useState<SportLifeCustomerOrder[]>([]);
-
-  // State for new SportLife item input (for the current customer order)
+  
   const [newSLItemName, setNewSLItemName] = useState('');
   const [newSLItemQuantity, setNewSLItemQuantity] = useState(1);
   const [newSLItemWholesaleCost, setNewSLItemWholesaleCost] = useState(0);
+
+  // Catalog State
+  const [sportLifeCatalog, setSportLifeCatalog] = useState<SportLifeCatalogItem[]>([
+    { id: 'cat1', itemName: 'Premium Protein Powder', wholesaleCost: 25.99 },
+    { id: 'cat2', itemName: 'Energy Bars (Box of 12)', wholesaleCost: 15.50 },
+    { id: 'cat3', itemName: 'BCAA Capsules', wholesaleCost: 19.75 },
+    { id: 'cat4', itemName: 'Creatine Monohydrate', wholesaleCost: 22.00 },
+    { id: 'cat5', itemName: 'Multivitamin Gummies', wholesaleCost: 12.99 },
+  ]);
+  const [filteredCatalogItems, setFilteredCatalogItems] = useState<SportLifeCatalogItem[]>([]);
+  const [showCatalogSuggestions, setShowCatalogSuggestions] = useState(false);
+  const [editingCatalogItem, setEditingCatalogItem] = useState<SportLifeCatalogItem | null>(null);
+  const [editCatalogItemName, setEditCatalogItemName] = useState('');
+  const [editCatalogItemCost, setEditCatalogItemCost] = useState(0);
+  const [catalogSearchTerm, setCatalogSearchTerm] = useState('');
 
 
   // --- Six Car Coffee Handlers ---
@@ -61,50 +81,108 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
     setSixCarQuantity(1); 
   };
 
-  // --- SportLife Nutrition Handlers ---
+  // --- SportLife Nutrition Catalog Logic ---
+  useEffect(() => {
+    if (newSLItemName.trim() === '') {
+      setFilteredCatalogItems([]);
+      setShowCatalogSuggestions(false);
+      return;
+    }
+    const suggestions = sportLifeCatalog.filter(item => 
+      item.itemName.toLowerCase().includes(newSLItemName.toLowerCase())
+    );
+    setFilteredCatalogItems(suggestions);
+    setShowCatalogSuggestions(suggestions.length > 0);
+  }, [newSLItemName, sportLifeCatalog]);
+
+  const handleSelectCatalogSuggestion = (item: SportLifeCatalogItem) => {
+    setNewSLItemName(item.itemName);
+    setNewSLItemWholesaleCost(item.wholesaleCost);
+    setShowCatalogSuggestions(false);
+  };
+
+  const handleSaveNewItemToCatalog = () => {
+    if (!newSLItemName.trim()) {
+      alert("Please enter an item name.");
+      return;
+    }
+    if (newSLItemWholesaleCost < 0) {
+      alert("Wholesale cost cannot be negative.");
+      return;
+    }
+
+    setSportLifeCatalog(prevCatalog => {
+      const existingItemIndex = prevCatalog.findIndex(item => item.itemName.toLowerCase() === newSLItemName.trim().toLowerCase());
+      if (existingItemIndex > -1) {
+        // Update existing item
+        const updatedCatalog = [...prevCatalog];
+        updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: newSLItemWholesaleCost };
+        alert(`Item "${newSLItemName.trim()}" updated in catalog with cost $${newSLItemWholesaleCost.toFixed(2)}.`);
+        return updatedCatalog;
+      } else {
+        // Add new item
+        const newCatalogItem: SportLifeCatalogItem = {
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+          itemName: newSLItemName.trim(),
+          wholesaleCost: newSLItemWholesaleCost,
+        };
+        alert(`Item "${newCatalogItem.itemName}" added to catalog with cost $${newSLItemWholesaleCost.toFixed(2)}.`);
+        return [...prevCatalog, newCatalogItem];
+      }
+    });
+    // Optionally clear fields after saving, or user might want to add it to order
+    // setNewSLItemName(''); 
+    // setNewSLItemWholesaleCost(0);
+  };
+  
+  // --- SportLife Nutrition Order Handlers ---
   const handleAddSLItemToCurrentCustomer = () => {
-    if (!newSLItemName || newSLItemQuantity <= 0 || newSLItemWholesaleCost < 0) {
-      alert("Please provide valid item name, quantity, and wholesale cost.");
+    if (!newSLItemName.trim() || newSLItemQuantity <= 0 || newSLItemWholesaleCost < 0) {
+      alert("Please provide valid item name, quantity (positive), and wholesale cost (non-negative).");
       return;
     }
     const newItem: SportLifeItem = {
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 9), // More unique ID
-      itemName: newSLItemName,
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+      itemName: newSLItemName.trim(),
       quantity: newSLItemQuantity,
       wholesaleCost: newSLItemWholesaleCost,
     };
     setCurrentSLCItems(prev => [...prev, newItem]);
+
+    // Update catalog if item exists and cost changed
+    setSportLifeCatalog(prevCatalog => {
+      const existingItemIndex = prevCatalog.findIndex(catItem => catItem.itemName.toLowerCase() === newItem.itemName.toLowerCase());
+      if (existingItemIndex > -1 && prevCatalog[existingItemIndex].wholesaleCost !== newItem.wholesaleCost) {
+        const updatedCatalog = [...prevCatalog];
+        updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: newItem.wholesaleCost };
+        console.log(`Catalog item "${newItem.itemName}" price updated to $${newItem.wholesaleCost.toFixed(2)} because it was changed when added to order.`);
+        return updatedCatalog;
+      }
+      return prevCatalog;
+    });
+
     setNewSLItemName('');
     setNewSLItemQuantity(1);
     setNewSLItemWholesaleCost(0);
+    setShowCatalogSuggestions(false);
   };
 
   const handleRemoveSLItemFromCurrentCustomer = (itemId: string) => {
     setCurrentSLCItems(prev => prev.filter(item => item.id !== itemId));
   };
-  
-  const handleSaveNewItemToCatalog = () => {
-    if(!newSLItemName) {
-        alert("Please enter an item name to save to catalog.");
-        return;
-    }
-    console.log(`(Stub) Saving item to catalog: ${newSLItemName}`);
-    alert(`(Stub) Item "${newSLItemName}" would be saved to catalog.`);
-  };
 
   const handleAddCustomerOrderToBatch = () => {
-    if (!currentSLCCustomerName || currentSLCItems.length === 0) {
+    if (!currentSLCCustomerName.trim() || currentSLCItems.length === 0) {
       alert("Please provide customer name and add at least one item for this customer.");
       return;
     }
     const newCustomerOrder: SportLifeCustomerOrder = {
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 9), // More unique ID
-      customerName: currentSLCCustomerName,
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+      customerName: currentSLCCustomerName.trim(),
       items: [...currentSLCItems],
       processingFeePercent: currentSLCProcessingFee,
     };
     setSportLifeBatchOrders(prev => [...prev, newCustomerOrder]);
-    // Reset form for the next customer order
     setCurrentSLCCustomerName('');
     setCurrentSLCItems([]);
     setCurrentSLCProcessingFee(2);
@@ -153,6 +231,54 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const totalBatchFinalAmount = useMemo(() => {
      return sportLifeBatchOrders.reduce((batchSum, order) => batchSum + calculateCustomerOrderTotal(order), 0);
   }, [sportLifeBatchOrders]);
+
+  // Catalog Management Functions
+  const handleOpenEditCatalogItemModal = (item: SportLifeCatalogItem) => {
+    setEditingCatalogItem(item);
+    setEditCatalogItemName(item.itemName);
+    setEditCatalogItemCost(item.wholesaleCost);
+  };
+
+  const handleCloseEditCatalogItemModal = () => {
+    setEditingCatalogItem(null);
+    setEditCatalogItemName('');
+    setEditCatalogItemCost(0);
+  };
+
+  const handleSaveEditedCatalogItem = () => {
+    if (!editingCatalogItem) return;
+    if (!editCatalogItemName.trim()) {
+        alert("Item name cannot be empty.");
+        return;
+    }
+    if (editCatalogItemCost < 0) {
+        alert("Wholesale cost cannot be negative.");
+        return;
+    }
+    setSportLifeCatalog(prevCatalog => 
+      prevCatalog.map(item => 
+        item.id === editingCatalogItem.id 
+        ? { ...item, itemName: editCatalogItemName.trim(), wholesaleCost: editCatalogItemCost } 
+        : item
+      )
+    );
+    alert(`Catalog item "${editCatalogItemName.trim()}" updated.`);
+    handleCloseEditCatalogItemModal();
+  };
+
+  const handleDeleteCatalogItem = (itemId: string) => {
+    if (window.confirm("Are you sure you want to delete this item from the catalog?")) {
+      setSportLifeCatalog(prevCatalog => prevCatalog.filter(item => item.id !== itemId));
+      alert("Item deleted from catalog.");
+    }
+  };
+
+  const displayedCatalogItems = useMemo(() => {
+    if (!catalogSearchTerm.trim()) return sportLifeCatalog;
+    return sportLifeCatalog.filter(item => 
+      item.itemName.toLowerCase().includes(catalogSearchTerm.toLowerCase())
+    );
+  }, [sportLifeCatalog, catalogSearchTerm]);
 
 
   return (
@@ -234,9 +360,28 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-                    <div>
+                    <div className="relative">
                       <Label htmlFor="newSLItemName">Item Name</Label>
-                      <Input id="newSLItemName" value={newSLItemName} onChange={e => setNewSLItemName(e.target.value)} placeholder="e.g., Protein Powder X"/>
+                      <Input 
+                        id="newSLItemName" 
+                        value={newSLItemName} 
+                        onChange={e => { setNewSLItemName(e.target.value); }}
+                        onFocus={() => newSLItemName && filteredCatalogItems.length > 0 && setShowCatalogSuggestions(true)}
+                        placeholder="e.g., Protein Powder X"
+                      />
+                      {showCatalogSuggestions && filteredCatalogItems.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
+                          {filteredCatalogItems.map(item => (
+                            <div
+                              key={item.id}
+                              className="p-2 hover:bg-sky-100 cursor-pointer text-sm"
+                              onClick={() => handleSelectCatalogSuggestion(item)}
+                            >
+                              {item.itemName} (${item.wholesaleCost.toFixed(2)})
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="newSLItemQuantity">Quantity</Label>
@@ -251,7 +396,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
                     <Button onClick={handleAddSLItemToCurrentCustomer} variant="outline" size="sm">
                       <Plus size={16} className="mr-1"/> Add Item
                     </Button>
-                    <Button onClick={handleSaveNewItemToCatalog} variant="outline" size="sm" disabled={!newSLItemName}>
+                    <Button onClick={handleSaveNewItemToCatalog} variant="outline" size="sm" disabled={!newSLItemName.trim()}>
                       <Library size={16} className="mr-1"/> Save to Catalog
                     </Button>
                   </div>
@@ -355,8 +500,87 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
         </CardContent>
       </Card>
 
-      {/* Section C: Bee's Fundraising Orders */}
+      {/* Section B.1: SportLife Item Catalog Management */}
       <Card className="content-fade-in-up" style={{ animationDelay: '450ms' }}>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-slate-900 flex items-center">
+            <Library size={28} className="mr-3 text-indigo-500" /> SportLife Item Catalog
+          </CardTitle>
+          <CardDescription>Manage frequently ordered items and their wholesale costs.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input 
+              type="search" 
+              placeholder="Search catalog..." 
+              className="pl-10" 
+              value={catalogSearchTerm}
+              onChange={(e) => setCatalogSearchTerm(e.target.value)}
+            />
+          </div>
+          {displayedCatalogItems.length > 0 ? (
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+              {displayedCatalogItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-3 bg-white/60 border border-brand-slate-200/50 rounded-lg shadow-sm">
+                  <div>
+                    <p className="font-semibold text-slate-800">{item.itemName}</p>
+                    <p className="text-sm text-slate-500">Wholesale: ${item.wholesaleCost.toFixed(2)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEditCatalogItemModal(item)} className="text-sky-600 hover:bg-sky-100 h-8 w-8">
+                      <Edit size={16} />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteCatalogItem(item.id)} className="text-red-500 hover:bg-red-100 h-8 w-8">
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 text-center py-4">
+              {catalogSearchTerm ? "No items match your search." : "Catalog is empty. Add items using the 'Save to Catalog' button above."}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Catalog Item Dialog */}
+      {editingCatalogItem && (
+        <Dialog open={!!editingCatalogItem} onOpenChange={(isOpen) => !isOpen && handleCloseEditCatalogItemModal()}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Catalog Item</DialogTitle>
+              <DialogDescription>
+                Update the details for "{editingCatalogItem.itemName}".
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div>
+                <Label htmlFor="editCatalogItemName">Item Name</Label>
+                <Input id="editCatalogItemName" value={editCatalogItemName} onChange={(e) => setEditCatalogItemName(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="editCatalogItemCost">Wholesale Cost ($)</Label>
+                <Input id="editCatalogItemCost" type="number" value={editCatalogItemCost} onChange={(e) => setEditCatalogItemCost(parseFloat(e.target.value) || 0)} min="0" step="0.01" />
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancel</Button>
+              </DialogClose>
+              <Button type="button" onClick={handleSaveEditedCatalogItem}>
+                <Save size={16} className="mr-2" /> Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+
+      {/* Section C: Bee's Fundraising Orders */}
+      <Card className="content-fade-in-up" style={{ animationDelay: '600ms' }}>
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-slate-900 flex items-center">
             <Package size={28} className="mr-3 text-amber-500" /> Bee's Fundraising Orders
@@ -374,5 +598,3 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default SpecialOrdersPage;
-
-    
