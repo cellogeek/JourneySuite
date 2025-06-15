@@ -11,6 +11,7 @@ import { useAppContext } from '@/context/AppContext';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/hooks/use-toast";
 
 
 interface SportLifeItem {
@@ -36,6 +37,7 @@ interface SportLifeCatalogItem {
 
 const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const { currentUser } = useAppContext(); 
+  const { toast } = useToast();
 
   // --- Six Car Coffee State ---
   const [sixCarQuantity, setSixCarQuantity] = useState(1);
@@ -114,10 +116,21 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
     setSportLifeCatalog(prevCatalog => {
       const existingItemIndex = prevCatalog.findIndex(item => item.itemName.toLowerCase() === newSLItemName.trim().toLowerCase());
       if (existingItemIndex > -1) {
-        // Update existing item
+        const existingCatalogItem = prevCatalog[existingItemIndex];
+        if (existingCatalogItem.wholesaleCost === newSLItemWholesaleCost) {
+            alert(`"${newSLItemName.trim()}" already in catalog at $${newSLItemWholesaleCost.toFixed(2)}. No change made.`);
+            return prevCatalog;
+        } else if (newSLItemWholesaleCost < existingCatalogItem.wholesaleCost) {
+            toast({
+                title: "Lower Price Warning",
+                description: `"${newSLItemName.trim()}" price ($${newSLItemWholesaleCost.toFixed(2)}) is less than catalog ($${existingCatalogItem.wholesaleCost.toFixed(2)}). Catalog updated.`,
+                variant: "destructive",
+            });
+        } else {
+             alert(`Catalog price for "${newSLItemName.trim()}" updated to $${newSLItemWholesaleCost.toFixed(2)}.`);
+        }
         const updatedCatalog = [...prevCatalog];
         updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: newSLItemWholesaleCost };
-        alert(`Item "${newSLItemName.trim()}" updated in catalog with cost $${newSLItemWholesaleCost.toFixed(2)}.`);
         return updatedCatalog;
       } else {
         // Add new item
@@ -135,18 +148,35 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const handleSaveItemFromOrderToCatalog = (itemToSave: SportLifeItem) => {
     setSportLifeCatalog(prevCatalog => {
       const existingItemIndex = prevCatalog.findIndex(catItem => catItem.itemName.toLowerCase() === itemToSave.itemName.toLowerCase());
+      
       if (existingItemIndex > -1) {
-        const updatedCatalog = [...prevCatalog];
-        updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: itemToSave.wholesaleCost };
-        alert(`Item "${itemToSave.itemName}" updated in catalog to $${itemToSave.wholesaleCost.toFixed(2)}.`);
-        return updatedCatalog;
+        const existingCatalogItem = prevCatalog[existingItemIndex];
+        if (itemToSave.wholesaleCost === existingCatalogItem.wholesaleCost) {
+          alert(`"${itemToSave.itemName}" is already in catalog at $${itemToSave.wholesaleCost.toFixed(2)}. No change made.`);
+          return prevCatalog; 
+        } else if (itemToSave.wholesaleCost < existingCatalogItem.wholesaleCost) {
+          toast({
+            title: "Lower Price Warning",
+            description: `"${itemToSave.itemName}" price ($${itemToSave.wholesaleCost.toFixed(2)}) is less than catalog ($${existingCatalogItem.wholesaleCost.toFixed(2)}). Catalog updated.`,
+            variant: "destructive",
+          });
+          const updatedCatalog = [...prevCatalog];
+          updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: itemToSave.wholesaleCost };
+          return updatedCatalog;
+        } else { // Price is higher
+          const updatedCatalog = [...prevCatalog];
+          updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: itemToSave.wholesaleCost };
+          alert(`Catalog price for "${itemToSave.itemName}" updated to $${itemToSave.wholesaleCost.toFixed(2)}.`);
+          return updatedCatalog;
+        }
       } else {
+        // Item doesn't exist, add new
         const newCatalogItem: SportLifeCatalogItem = {
           id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
           itemName: itemToSave.itemName,
           wholesaleCost: itemToSave.wholesaleCost,
         };
-        alert(`Item "${newCatalogItem.itemName}" added to catalog with cost $${itemToSave.wholesaleCost.toFixed(2)}.`);
+        alert(`Item "${newCatalogItem.itemName}" added to catalog. Cost: $${newCatalogItem.wholesaleCost.toFixed(2)}.`);
         return [...prevCatalog, newCatalogItem];
       }
     });
@@ -171,9 +201,19 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
     setSportLifeCatalog(prevCatalog => {
       const existingItemIndex = prevCatalog.findIndex(catItem => catItem.itemName.toLowerCase() === newItem.itemName.toLowerCase());
       if (existingItemIndex > -1 && prevCatalog[existingItemIndex].wholesaleCost !== newItem.wholesaleCost) {
+        const existingCatalogItem = prevCatalog[existingItemIndex];
         const updatedCatalog = [...prevCatalog];
+        
+        if (newItem.wholesaleCost < existingCatalogItem.wholesaleCost) {
+            // This toast is for when adding item to order and it's lower than catalog
+            // Not explicitly requested to be a toast here, but consistent.
+            // For now, following original behavior: console.log + update.
+            // If a toast is desired here too, it can be added.
+            console.log(`Catalog item "${newItem.itemName}" updated to a LOWER price $${newItem.wholesaleCost.toFixed(2)} from $${existingCatalogItem.wholesaleCost.toFixed(2)} (triggered when adding to order).`);
+        } else {
+            console.log(`Catalog item "${newItem.itemName}" price updated to $${newItem.wholesaleCost.toFixed(2)} because it was changed when added to order.`);
+        }
         updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: newItem.wholesaleCost };
-        console.log(`Catalog item "${newItem.itemName}" price updated to $${newItem.wholesaleCost.toFixed(2)} because it was changed when added to order.`);
         return updatedCatalog;
       }
       return prevCatalog;
