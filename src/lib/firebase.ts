@@ -19,8 +19,10 @@ const firebaseConfig = {
 let app;
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
+  console.log("Firebase app initialized for the first time.");
 } else {
   app = getApp();
+  console.log("Firebase app re-initialized or already exists.");
 }
 
 const auth = getAuth(app);

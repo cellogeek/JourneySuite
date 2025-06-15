@@ -97,12 +97,20 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [loadingAuth, setLoadingAuth] = useState(true); // Start with loading true
 
   useEffect(() => {
+    console.log("AppProvider: Setting up onAuthStateChanged listener...");
     const unsubscribe = auth.onAuthStateChanged(user => {
+      if (user) {
+        console.log("AppProvider: User is signed in. UID:", user.uid);
+      } else {
+        console.log("AppProvider: User is signed out.");
+      }
       setCurrentUser(user);
       setLoadingAuth(false);
-      // TODO: If user is null and page requires auth, redirect to login or show message
     });
-    return () => unsubscribe(); // Cleanup subscription on unmount
+    return () => {
+      console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
+      unsubscribe(); 
+    }
   }, []);
 
   const getActivePage = (): NavItemStructure | undefined => {
