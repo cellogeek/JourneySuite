@@ -9,7 +9,7 @@ import {
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon
 } from 'lucide-react';
 import { auth } from '@/lib/firebase'; // Import Firebase auth
-import type { User } from 'firebase/auth'; // Import User type
+import { type User, signInWithEmailAndPassword, type UserCredential } from 'firebase/auth'; // Import User type and signInWithEmailAndPassword
 
 // Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
@@ -41,8 +41,9 @@ interface AppContextType {
   setActivePageId: (id: string) => void;
   navGroups: NavGroup[];
   getActivePage: () => NavItemStructure | undefined;
-  currentUser: User | null; // Add currentUser to context
-  loadingAuth: boolean; // Add loading state for auth
+  currentUser: User | null;
+  loadingAuth: boolean;
+  devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // For development login
 }
 
 const navGroupsData: NavGroup[] = [
@@ -94,7 +95,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activePageId, setActivePageId] = useState<string>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true); // Start with loading true
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
     console.log("AppProvider: Setting up onAuthStateChanged listener...");
@@ -109,9 +110,43 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
     return () => {
       console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
-      unsubscribe(); 
+      unsubscribe();
     }
   }, []);
+
+  // Development-only login function
+  const devLogin = async (email: string, pass: string): Promise<UserCredential | void> => {
+    // IMPORTANT: This function is for development purposes only and should be removed for production.
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        console.log(`Attempting dev login for: ${email}`);
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+        console.log("Dev login successful:", userCredential.user);
+        return userCredential;
+      } catch (error) {
+        console.error("Dev login error:", error);
+        // It's better to throw or return an error object rather than using alert in context.
+        // For dev convenience, an alert might be okay, but typically avoid UI side-effects here.
+        alert(`Dev Login Failed: ${(error as Error).message}`);
+      }
+    } else {
+      console.warn("devLogin is only available in development mode.");
+      alert("This function is for development purposes only and should not be called in production.");
+    }
+  };
+
+  // Expose devLogin on window object in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).devLogin = devLogin;
+      console.log("devLogin function exposed on window object for development. Usage: await window.devLogin('email', 'password')");
+      return () => {
+        // Clean up the global function when the component unmounts or in production
+        delete (window as any).devLogin;
+      };
+    }
+  }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount.
+
 
   const getActivePage = (): NavItemStructure | undefined => {
     for (const group of navGroupsData) {
@@ -131,7 +166,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AppContext.Provider value={{ activePageId, setActivePageId, navGroups: navGroupsData, getActivePage, currentUser, loadingAuth }}>
+    <AppContext.Provider value={{ activePageId, setActivePageId, navGroups: navGroupsData, getActivePage, currentUser, loadingAuth, devLogin }}>
       {children}
     </AppContext.Provider>
   );
@@ -144,3 +179,5 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+    
