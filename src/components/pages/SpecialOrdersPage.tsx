@@ -42,6 +42,9 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   // --- Six Car Coffee State ---
   const [sixCarQuantity, setSixCarQuantity] = useState(1);
 
+  // --- Canyon Country Church State ---
+  const [canyonCountryChurchQuantity, setCanyonCountryChurchQuantity] = useState(1);
+
   // --- SportLife Nutrition State ---
   const [currentSLCCustomerName, setCurrentSLCCustomerName] = useState('');
   const [currentSLCItems, setCurrentSLCItems] = useState<SportLifeItem[]>([]);
@@ -78,10 +81,28 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
       alert("Please log in to place an order.");
       return;
     }
+    // TODO: Implement actual workflow: Inventory reduction, Vendor request, Task creation
     console.log(`Six Car Order: ${sixCarQuantity} bags. User: ${currentUser.uid}, Timestamp: ${new Date().toISOString()}`);
     alert(`(Stub) Ordered ${sixCarQuantity} bags for Six Car Coffee.`);
     setSixCarQuantity(1); 
   };
+
+  // --- Canyon Country Church Handlers ---
+  const handleCanyonCountryChurchQuantityChange = (amount: number) => {
+    setCanyonCountryChurchQuantity(prev => Math.max(1, prev + amount));
+  };
+
+  const handleCanyonCountryChurchOrder = () => {
+    if (!currentUser) {
+      alert("Please log in to place an order.");
+      return;
+    }
+    // TODO: Implement actual workflow (similar to Six Car but for Canyon Country Church)
+    console.log(`Canyon Country Church Order: ${canyonCountryChurchQuantity} bags. User: ${currentUser.uid}, Timestamp: ${new Date().toISOString()}`);
+    alert(`(Stub) Ordered ${canyonCountryChurchQuantity} bags for Canyon Country Church.`);
+    setCanyonCountryChurchQuantity(1);
+  };
+
 
   // --- SportLife Nutrition Catalog Logic ---
   useEffect(() => {
@@ -205,10 +226,6 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
         const updatedCatalog = [...prevCatalog];
         
         if (newItem.wholesaleCost < existingCatalogItem.wholesaleCost) {
-            // This toast is for when adding item to order and it's lower than catalog
-            // Not explicitly requested to be a toast here, but consistent.
-            // For now, following original behavior: console.log + update.
-            // If a toast is desired here too, it can be added.
             console.log(`Catalog item "${newItem.itemName}" updated to a LOWER price $${newItem.wholesaleCost.toFixed(2)} from $${existingCatalogItem.wholesaleCost.toFixed(2)} (triggered when adding to order).`);
         } else {
             console.log(`Catalog item "${newItem.itemName}" price updated to $${newItem.wholesaleCost.toFixed(2)} because it was changed when added to order.`);
@@ -262,6 +279,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
       alert("Please add at least one customer order to the batch.");
       return;
     }
+    // TODO: Implement actual workflow: CRM integration, Invoicing, Inventory, Task creation
     console.log({
       message: "SportLife Batch Order Submitted",
       batchOrders: sportLifeBatchOrders,
@@ -383,6 +401,41 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Section: Canyon Country Church Coffee Orders */}
+      <Card className="content-fade-in-up" style={{ animationDelay: '225ms' }}>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-slate-900 flex items-center">
+            <Package size={28} className="mr-3 text-emerald-600" /> Canyon Country Church Supply
+          </CardTitle>
+          <CardDescription>Order coffee bag supply for Canyon Country Church.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center space-y-6">
+          <Label htmlFor="canyonCountryChurchQuantity" className="text-lg font-semibold text-slate-700">
+            Quantity of Coffee Bags:
+          </Label>
+          <div className="flex items-center space-x-3">
+            <Button variant="outline" size="icon" onClick={() => handleCanyonCountryChurchQuantityChange(-1)} aria-label="Decrease quantity">
+              <Minus size={20} />
+            </Button>
+            <Input
+              id="canyonCountryChurchQuantity"
+              type="number"
+              value={canyonCountryChurchQuantity}
+              onChange={(e) => setCanyonCountryChurchQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              className="w-24 text-center text-xl font-bold"
+              min="1"
+            />
+            <Button variant="outline" size="icon" onClick={() => handleCanyonCountryChurchQuantityChange(1)} aria-label="Increase quantity">
+              <Plus size={20} />
+            </Button>
+          </div>
+          <Button onClick={handleCanyonCountryChurchOrder} size="action" className="w-full max-w-xs bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-soft-green">
+            Place Order
+          </Button>
+        </CardContent>
+      </Card>
+
 
       {/* Section B: SportLife Nutrition Orders */}
       <Card className="content-fade-in-up" style={{ animationDelay: '300ms' }}>
@@ -662,3 +715,5 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
 
 export default SpecialOrdersPage;
 
+
+    
