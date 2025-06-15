@@ -130,11 +130,29 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
         return [...prevCatalog, newCatalogItem];
       }
     });
-    // Optionally clear fields after saving, or user might want to add it to order
-    // setNewSLItemName(''); 
-    // setNewSLItemWholesaleCost(0);
   };
   
+  const handleSaveItemFromOrderToCatalog = (itemToSave: SportLifeItem) => {
+    setSportLifeCatalog(prevCatalog => {
+      const existingItemIndex = prevCatalog.findIndex(catItem => catItem.itemName.toLowerCase() === itemToSave.itemName.toLowerCase());
+      if (existingItemIndex > -1) {
+        const updatedCatalog = [...prevCatalog];
+        updatedCatalog[existingItemIndex] = { ...updatedCatalog[existingItemIndex], wholesaleCost: itemToSave.wholesaleCost };
+        alert(`Item "${itemToSave.itemName}" updated in catalog to $${itemToSave.wholesaleCost.toFixed(2)}.`);
+        return updatedCatalog;
+      } else {
+        const newCatalogItem: SportLifeCatalogItem = {
+          id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+          itemName: itemToSave.itemName,
+          wholesaleCost: itemToSave.wholesaleCost,
+        };
+        alert(`Item "${newCatalogItem.itemName}" added to catalog with cost $${itemToSave.wholesaleCost.toFixed(2)}.`);
+        return [...prevCatalog, newCatalogItem];
+      }
+    });
+  };
+
+
   // --- SportLife Nutrition Order Handlers ---
   const handleAddSLItemToCurrentCustomer = () => {
     if (!newSLItemName.trim() || newSLItemQuantity <= 0 || newSLItemWholesaleCost < 0) {
@@ -409,13 +427,18 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
                   <div className="space-y-1 rounded-md border p-2 bg-white/60 max-h-48 overflow-y-auto">
                     {currentSLCItems.map(item => (
                       <div key={item.id} className="flex items-center justify-between p-1.5 bg-white/80 rounded shadow-sm text-sm">
-                        <div>
+                        <div className="flex-grow">
                           <p className="font-medium text-slate-800">{item.itemName}</p>
                           <p className="text-xs text-slate-500">Qty: {item.quantity}, Cost: ${item.wholesaleCost.toFixed(2)} each, Total: ${calculateItemTotal(item).toFixed(2)}</p>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveSLItemFromCurrentCustomer(item.id)} aria-label="Remove item" className="h-7 w-7">
-                          <Trash2 size={14} className="text-red-500" />
-                        </Button>
+                        <div className="flex items-center flex-shrink-0">
+                           <Button variant="ghost" size="icon" onClick={() => handleSaveItemFromOrderToCatalog(item)} aria-label="Save item to catalog" className="h-7 w-7 text-sky-600 hover:bg-sky-100">
+                            <Library size={14} />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveSLItemFromCurrentCustomer(item.id)} aria-label="Remove item" className="h-7 w-7 text-red-500 hover:bg-red-100">
+                            <Trash2 size={14} />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -598,3 +621,4 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default SpecialOrdersPage;
+
