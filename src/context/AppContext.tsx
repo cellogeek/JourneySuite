@@ -44,7 +44,7 @@ interface AppContextType {
   currentUser: User | null;
   loadingAuth: boolean;
   devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // For development email/pass login
-  signInWithGoogle: () => Promise<void>; // For Google Sign-In (signInWithRedirect doesn't directly return UserCredential)
+  signInWithGoogle: () => Promise<void>;
 }
 
 const navGroupsData: NavGroup[] = [
@@ -99,41 +99,46 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
-    console.log("AppProvider: Setting up auth listeners and checking for redirect result...");
-    setLoadingAuth(true); // Ensure loading is true initially
+    setLoadingAuth(true);
+    let unsubscribe: (() => void) | undefined;
 
-    getRedirectResult(auth)
-      .then((result) => {
+    const initializeAuth = async () => {
+      console.log("AppProvider: Initializing auth. Checking for redirect result...");
+      try {
+        const result = await getRedirectResult(auth);
         if (result) {
-          // This means the user just signed in via redirect.
-          // The user object can be accessed via result.user.
-          console.log("AppProvider: Google Sign-In redirect result successful:", result.user);
-          // No need to setCurrentUser here, onAuthStateChanged will handle it.
+          // User signed in via redirect.
+          // onAuthStateChanged will handle setting currentUser and loadingAuth.
+          console.log("AppProvider: Google Sign-In redirect result processed for user:", result.user?.uid);
+        } else {
+          console.log("AppProvider: No redirect result found.");
         }
-        // If result is null, it means no redirect operation was pending.
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("AppProvider: Error processing Google Sign-In redirect result:", error);
-        // Handle errors, e.g., display a toast message to the user.
-      })
-      .finally(() => {
-        // Now, set up the persistent auth state listener.
-        // This will also fire if getRedirectResult found a user.
-        const unsubscribe = auth.onAuthStateChanged(user => {
-          if (user) {
-            console.log("AppProvider: User is signed in (onAuthStateChanged). UID:", user.uid);
-          } else {
-            console.log("AppProvider: User is signed out (onAuthStateChanged).");
-          }
-          setCurrentUser(user);
-          setLoadingAuth(false); // Auth state is now determined
-        });
+        // If there's an error with redirect, we still want onAuthStateChanged to run.
+      }
 
-        return () => {
-          console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
-          unsubscribe();
-        };
+      // Setup the persistent listener. This is the source of truth for auth state.
+      console.log("AppProvider: Setting up onAuthStateChanged listener.");
+      unsubscribe = auth.onAuthStateChanged(user => {
+        if (user) {
+          console.log("AppProvider: User is signed in (onAuthStateChanged). UID:", user.uid);
+        } else {
+          console.log("AppProvider: User is signed out (onAuthStateChanged).");
+        }
+        setCurrentUser(user);
+        setLoadingAuth(false); // Auth state is now definitively determined here.
       });
+    };
+
+    initializeAuth();
+
+    return () => {
+      if (unsubscribe) {
+        console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
+        unsubscribe();
+      }
+    };
   }, []);
 
 
@@ -163,7 +168,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       // The result is handled by getRedirectResult on page load.
     } catch (error) {
       console.error("Google Sign-In with redirect error:", error);
-      // You might want to use a toast notification here instead of an alert
       alert(`Google Sign-In Failed: ${(error as Error).message}`);
     }
   };
@@ -176,7 +180,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         delete (window as any).devLogin;
       };
     }
-  }, []);
+  }, [devLogin]); // Added devLogin to dependency array
 
 
   const getActivePage = (): NavItemStructure | undefined => {
@@ -208,5 +212,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+    
 
     
