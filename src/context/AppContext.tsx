@@ -6,10 +6,10 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
-  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon
+  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList // Added ClipboardList
 } from 'lucide-react';
 import { auth } from '@/lib/firebase'; // Import Firebase auth
-import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'; // Import User type and auth functions
+import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth'; // Import User type and auth functions
 
 // Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
@@ -19,6 +19,7 @@ import InvoicingPage from '@/components/pages/InvoicingPage';
 import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage';
 import CheckWriterPage from '@/components/pages/CheckWriterPage';
 import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
+import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage'; // Import new page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -43,7 +44,7 @@ interface AppContextType {
   getActivePage: () => NavItemStructure | undefined;
   currentUser: User | null;
   loadingAuth: boolean;
-  devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // For development email/pass login
+  devLogin: (email: string, pass: string) => Promise<UserCredential | void>; 
   signInWithGoogle: () => Promise<void>;
 }
 
@@ -69,6 +70,7 @@ const navGroupsData: NavGroup[] = [
     items: [
       { id: 'inventory', name: 'Inventory', icon: Boxes, title: 'Inventory Management', component: InventoryPage },
       { id: 'vendors', name: 'Vendors', icon: Truck, title: 'Vendor Management', description: "Manage vendor contracts, orders, and relationships.", component: GenericPlaceholderPage },
+      { id: 'special_orders', name: 'Special Orders', icon: ClipboardList, title: 'Special Orders Management', description: "Manage unique, recurring, and custom orders.", component: SpecialOrdersPage },
     ],
   },
   {
@@ -99,45 +101,42 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
-    setLoadingAuth(true);
-    let unsubscribe: (() => void) | undefined;
-
     const initializeAuth = async () => {
       console.log("AppProvider: Initializing auth. Checking for redirect result...");
       try {
         const result = await getRedirectResult(auth);
         if (result) {
-          // User signed in via redirect.
-          // onAuthStateChanged will handle setting currentUser and loadingAuth.
           console.log("AppProvider: Google Sign-In redirect result processed for user:", result.user?.uid);
+          // onAuthStateChanged will handle setting currentUser. setLoadingAuth will be handled by onAuthStateChanged.
         } else {
           console.log("AppProvider: No redirect result found.");
         }
       } catch (error) {
         console.error("AppProvider: Error processing Google Sign-In redirect result:", error);
-        // If there's an error with redirect, we still want onAuthStateChanged to run.
       }
 
-      // Setup the persistent listener. This is the source of truth for auth state.
       console.log("AppProvider: Setting up onAuthStateChanged listener.");
-      unsubscribe = auth.onAuthStateChanged(user => {
+      const unsubscribe = auth.onAuthStateChanged(user => {
         if (user) {
           console.log("AppProvider: User is signed in (onAuthStateChanged). UID:", user.uid);
         } else {
           console.log("AppProvider: User is signed out (onAuthStateChanged).");
         }
         setCurrentUser(user);
-        setLoadingAuth(false); // Auth state is now definitively determined here.
+        setLoadingAuth(false); // Auth state is definitively determined here.
       });
+      return unsubscribe; // Return the unsubscribe function for cleanup
     };
 
-    initializeAuth();
+    const unsubscribePromise = initializeAuth();
 
     return () => {
-      if (unsubscribe) {
-        console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
-        unsubscribe();
-      }
+      unsubscribePromise.then(unsubscribe => {
+        if (unsubscribe) {
+          console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
+          unsubscribe();
+        }
+      });
     };
   }, []);
 
@@ -164,8 +163,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("Attempting Google Sign-In with redirect...");
       await signInWithRedirect(auth, provider);
-      // signInWithRedirect doesn't resolve with UserCredential here.
-      // The result is handled by getRedirectResult on page load.
     } catch (error) {
       console.error("Google Sign-In with redirect error:", error);
       alert(`Google Sign-In Failed: ${(error as Error).message}`);
@@ -180,7 +177,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         delete (window as any).devLogin;
       };
     }
-  }, [devLogin]); // Added devLogin to dependency array
+  }, [devLogin]); 
 
 
   const getActivePage = (): NavItemStructure | undefined => {
@@ -191,7 +188,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
         const fallbackId = firstGroup.items[0].id;
-        // setActivePageId(fallbackId); // Avoid calling setState during render
         return firstGroup.items[0];
     }
     return undefined;
@@ -212,6 +208,5 @@ export const useAppContext = () => {
   }
   return context;
 };
-    
 
     
