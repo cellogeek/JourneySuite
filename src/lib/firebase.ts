@@ -31,9 +31,12 @@ const db = getFirestore(app);
 
 // REMINDER for Firebase Authentication (e.g., Google Sign-In):
 // If you encounter an 'auth/unauthorized-domain' error, you MUST add
-// your application's domain (especially your Firebase Hosting URL or
-// development preview URL) to the list of "Authorized domains" in your
+// your application's domain to the list of "Authorized domains" in your
 // Firebase project console:
 // Firebase Console -> Authentication -> Sign-in method -> Authorized domains.
+// For Firebase Studio dev preview or other hosted dev environments, this will
+// be the domain shown in your browser's address bar (e.g., 
+// 'your-project.web.app' or 'port-number-project-hash.cluster-id.cloudworkstations.dev').
 
 export { app, auth, db };
+
