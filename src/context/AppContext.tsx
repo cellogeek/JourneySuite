@@ -9,7 +9,7 @@ import {
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon
 } from 'lucide-react';
 import { auth } from '@/lib/firebase'; // Import Firebase auth
-import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import User type and auth functions
+import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth'; // Import User type and auth functions
 
 // Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
@@ -44,7 +44,7 @@ interface AppContextType {
   currentUser: User | null;
   loadingAuth: boolean;
   devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // For development email/pass login
-  signInWithGoogle: () => Promise<UserCredential | void>; // For Google Sign-In
+  signInWithGoogle: () => Promise<void>; // For Google Sign-In (signInWithRedirect doesn't directly return UserCredential)
 }
 
 const navGroupsData: NavGroup[] = [
@@ -99,21 +99,43 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
-    console.log("AppProvider: Setting up onAuthStateChanged listener...");
-    const unsubscribe = auth.onAuthStateChanged(user => {
-      if (user) {
-        console.log("AppProvider: User is signed in. UID:", user.uid);
-      } else {
-        console.log("AppProvider: User is signed out.");
-      }
-      setCurrentUser(user);
-      setLoadingAuth(false);
-    });
-    return () => {
-      console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
-      unsubscribe();
-    }
+    console.log("AppProvider: Setting up auth listeners and checking for redirect result...");
+    setLoadingAuth(true); // Ensure loading is true initially
+
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          // This means the user just signed in via redirect.
+          // The user object can be accessed via result.user.
+          console.log("AppProvider: Google Sign-In redirect result successful:", result.user);
+          // No need to setCurrentUser here, onAuthStateChanged will handle it.
+        }
+        // If result is null, it means no redirect operation was pending.
+      })
+      .catch((error) => {
+        console.error("AppProvider: Error processing Google Sign-In redirect result:", error);
+        // Handle errors, e.g., display a toast message to the user.
+      })
+      .finally(() => {
+        // Now, set up the persistent auth state listener.
+        // This will also fire if getRedirectResult found a user.
+        const unsubscribe = auth.onAuthStateChanged(user => {
+          if (user) {
+            console.log("AppProvider: User is signed in (onAuthStateChanged). UID:", user.uid);
+          } else {
+            console.log("AppProvider: User is signed out (onAuthStateChanged).");
+          }
+          setCurrentUser(user);
+          setLoadingAuth(false); // Auth state is now determined
+        });
+
+        return () => {
+          console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
+          unsubscribe();
+        };
+      });
   }, []);
+
 
   const devLogin = async (email: string, pass: string): Promise<UserCredential | void> => {
     if (process.env.NODE_ENV === 'development') {
@@ -132,15 +154,15 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  const signInWithGoogle = async (): Promise<UserCredential | void> => {
+  const signInWithGoogle = async (): Promise<void> => {
     const provider = new GoogleAuthProvider();
     try {
-      console.log("Attempting Google Sign-In...");
-      const userCredential = await signInWithPopup(auth, provider);
-      console.log("Google Sign-In successful:", userCredential.user);
-      return userCredential;
+      console.log("Attempting Google Sign-In with redirect...");
+      await signInWithRedirect(auth, provider);
+      // signInWithRedirect doesn't resolve with UserCredential here.
+      // The result is handled by getRedirectResult on page load.
     } catch (error) {
-      console.error("Google Sign-In error:", error);
+      console.error("Google Sign-In with redirect error:", error);
       // You might want to use a toast notification here instead of an alert
       alert(`Google Sign-In Failed: ${(error as Error).message}`);
     }
@@ -150,11 +172,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     if (process.env.NODE_ENV === 'development') {
       (window as any).devLogin = devLogin;
       console.log("devLogin function exposed on window object for development. Usage: await window.devLogin('email', 'password')");
-      // Expose signInWithGoogle on window for dev if needed, but button is better UX
-      // (window as any).signInWithGoogle = signInWithGoogle; 
       return () => {
         delete (window as any).devLogin;
-        // delete (window as any).signInWithGoogle;
       };
     }
   }, []);
