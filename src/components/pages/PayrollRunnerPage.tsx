@@ -9,9 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UploadCloud, AlertTriangle, CheckCircle2, FilePenLine, Trash2, Loader2 } from 'lucide-react';
+import { UploadCloud, AlertTriangle, CheckCircle2, FilePenLine, Trash2, Loader2, LogIn } from 'lucide-react'; // Added LogIn
 import { useAppContext } from '@/context/AppContext';
-import { db } from '@/lib/firebase'; // Import Firestore instance
+import { db } from '@/lib/firebase'; 
 import { collection, doc, getDocs, addDoc, setDoc, deleteDoc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
 
 // --- Papa Parse Script URL ---
@@ -239,22 +239,21 @@ const validateSingleEntry = (entry: Omit<TimeEntry, 'id' | 'durationMinutes' | '
 
 
 const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
-    const { currentUser, loadingAuth } = useAppContext();
+    const { currentUser, loadingAuth, signInWithGoogle } = useAppContext(); // Added signInWithGoogle
     const [viewMode, setViewMode] = useState<'upload' | 'review'>('upload');
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
     
     const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
     const [isLoadingTimeEntries, setIsLoadingTimeEntries] = useState(true);
-    const [isProcessingCsv, setIsProcessingCsv] = useState(false); // For CSV parsing specifically
-    const [isSaving, setIsSaving] = useState(false); // For Firestore save operations
+    const [isProcessingCsv, setIsProcessingCsv] = useState(false); 
+    const [isSaving, setIsSaving] = useState(false); 
 
     const [error, setError] = useState('');
     const [editEntry, setEditEntry] = useState<TimeEntry | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const scriptLoaded = useRef(false);
 
-    // Load PapaParse script
     useEffect(() => {
         if (!(window as any).Papa && !document.querySelector(`script[src="${PAPA_PARSE_URL}"]`)) {
             const script = document.createElement('script');
@@ -269,7 +268,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
         }
     }, []);
 
-    // Firestore: Fetch Employees & Seed if necessary
     useEffect(() => {
         if (!currentUser) {
             setEmployees([]);
@@ -280,7 +278,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
         const employeesColRef = collection(db, 'users', currentUser.uid, 'payrollEmployees');
         const unsubscribe = onSnapshot(employeesColRef, async (snapshot) => {
             if (snapshot.empty) {
-                // Seed default employees for new user
                 const batch = writeBatch(db);
                 defaultEmployeesDataSeed.forEach(empData => {
                     const newEmpRef = doc(collection(db, 'users', currentUser.uid, 'payrollEmployees'));
@@ -288,7 +285,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
                 });
                 try {
                     await batch.commit();
-                    // Data will be picked up by the listener, no need to setEmployees here
                 } catch (e) {
                     console.error("Error seeding default employees:", e);
                     setError("Failed to set up initial employee data.");
@@ -306,7 +302,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
         return () => unsubscribe();
     }, [currentUser]);
 
-    // Firestore: Fetch Time Entries
     useEffect(() => {
         if (!currentUser) {
             setTimeEntries([]);
@@ -315,7 +310,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
         }
         setIsLoadingTimeEntries(true);
         const timeEntriesColRef = collection(db, 'users', currentUser.uid, 'payrollTimeEntries');
-        // TODO: Consider querying by pay period or date range in the future
         const unsubscribe = onSnapshot(timeEntriesColRef, (snapshot) => {
             const fetchedEntries = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TimeEntry));
             setTimeEntries(fetchedEntries);
@@ -349,13 +343,12 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
             clockOut: updatedEntryData.clockOut !== undefined ? updatedEntryData.clockOut : currentEntry.clockOut,
         };
         
-        // Re-validate only the changed parts before saving
         const validatedEntry = validateSingleEntry(entryWithUpdates); 
         
         try {
             const entryRef = doc(db, 'users', currentUser.uid, 'payrollTimeEntries', validatedEntry.id);
-            await setDoc(entryRef, validatedEntry, { merge: true }); // Use merge to be safe if other fields exist
-            setEditEntry(null); // Close modal on success
+            await setDoc(entryRef, validatedEntry, { merge: true }); 
+            setEditEntry(null); 
         } catch (e) {
             console.error("Error updating time entry:", e);
             setError("Failed to save changes. Please try again.");
@@ -369,7 +362,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
         try {
             const entryRef = doc(db, 'users', currentUser.uid, 'payrollTimeEntries', id);
             await deleteDoc(entryRef);
-            // Time entries will update via onSnapshot
         } catch (e) {
             console.error("Error deleting time entry:", e);
             setError("Failed to delete entry. Please try again.");
@@ -392,7 +384,6 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
             setError('Employee data is not loaded. Cannot process CSV.');
             return;
         }
-
 
         setIsProcessingCsv(true); setError('');
         
@@ -514,9 +505,12 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
                 <CardHeader>
                     <CardTitle>Access Denied</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="text-center space-y-4">
                     <p className="text-slate-600">Please log in to use the Payroll Runner.</p>
-                    {/* TODO: Add a login button/link here */}
+                    <Button onClick={signInWithGoogle} variant="default" size="lg">
+                        <LogIn className="mr-2 h-5 w-5" />
+                        Sign in with Google
+                    </Button>
                 </CardContent>
             </Card>
         );

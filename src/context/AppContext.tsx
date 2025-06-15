@@ -9,7 +9,7 @@ import {
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon
 } from 'lucide-react';
 import { auth } from '@/lib/firebase'; // Import Firebase auth
-import { type User, signInWithEmailAndPassword, type UserCredential } from 'firebase/auth'; // Import User type and signInWithEmailAndPassword
+import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Import User type and auth functions
 
 // Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
@@ -43,7 +43,8 @@ interface AppContextType {
   getActivePage: () => NavItemStructure | undefined;
   currentUser: User | null;
   loadingAuth: boolean;
-  devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // For development login
+  devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // For development email/pass login
+  signInWithGoogle: () => Promise<UserCredential | void>; // For Google Sign-In
 }
 
 const navGroupsData: NavGroup[] = [
@@ -114,9 +115,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Development-only login function
   const devLogin = async (email: string, pass: string): Promise<UserCredential | void> => {
-    // IMPORTANT: This function is for development purposes only and should be removed for production.
     if (process.env.NODE_ENV === 'development') {
       try {
         console.log(`Attempting dev login for: ${email}`);
@@ -125,27 +124,40 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         return userCredential;
       } catch (error) {
         console.error("Dev login error:", error);
-        // It's better to throw or return an error object rather than using alert in context.
-        // For dev convenience, an alert might be okay, but typically avoid UI side-effects here.
         alert(`Dev Login Failed: ${(error as Error).message}`);
       }
     } else {
       console.warn("devLogin is only available in development mode.");
-      alert("This function is for development purposes only and should not be called in production.");
+      alert("This function is for development purposes only.");
+    }
+  };
+  
+  const signInWithGoogle = async (): Promise<UserCredential | void> => {
+    const provider = new GoogleAuthProvider();
+    try {
+      console.log("Attempting Google Sign-In...");
+      const userCredential = await signInWithPopup(auth, provider);
+      console.log("Google Sign-In successful:", userCredential.user);
+      return userCredential;
+    } catch (error) {
+      console.error("Google Sign-In error:", error);
+      // You might want to use a toast notification here instead of an alert
+      alert(`Google Sign-In Failed: ${(error as Error).message}`);
     }
   };
 
-  // Expose devLogin on window object in development mode
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       (window as any).devLogin = devLogin;
       console.log("devLogin function exposed on window object for development. Usage: await window.devLogin('email', 'password')");
+      // Expose signInWithGoogle on window for dev if needed, but button is better UX
+      // (window as any).signInWithGoogle = signInWithGoogle; 
       return () => {
-        // Clean up the global function when the component unmounts or in production
         delete (window as any).devLogin;
+        // delete (window as any).signInWithGoogle;
       };
     }
-  }, []); // Empty dependency array ensures this runs once on mount and cleans up on unmount.
+  }, []);
 
 
   const getActivePage = (): NavItemStructure | undefined => {
@@ -156,9 +168,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
         const fallbackId = firstGroup.items[0].id;
-        if (activePageId !== fallbackId) {
-            // setActivePageId(fallbackId); // Potentially problematic if called during render.
-        }
+        // setActivePageId(fallbackId); // Avoid calling setState during render
         return firstGroup.items[0];
     }
     return undefined;
@@ -166,7 +176,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AppContext.Provider value={{ activePageId, setActivePageId, navGroups: navGroupsData, getActivePage, currentUser, loadingAuth, devLogin }}>
+    <AppContext.Provider value={{ activePageId, setActivePageId, navGroups: navGroupsData, getActivePage, currentUser, loadingAuth, devLogin, signInWithGoogle }}>
       {children}
     </AppContext.Provider>
   );
