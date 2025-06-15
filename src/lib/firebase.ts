@@ -1,16 +1,18 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// TODO: Replace with your actual Firebase project configuration
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "YOUR_API_KEY",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "YOUR_AUTH_DOMAIN",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "YOUR_STORAGE_BUCKET",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "YOUR_APP_ID",
+  apiKey: "AIzaSyCRr0TJMnbbYgZO8u4VWgLmw5-oqu5Plsc",
+  authDomain: "journey-suite.firebaseapp.com",
+  projectId: "journey-suite",
+  storageBucket: "journey-suite.appspot.com", // Corrected from .firebasestorage.app to .appspot.com
+  messagingSenderId: "130642270887",
+  appId: "1:130642270887:web:01fa28fed8112351b75982",
+  measurementId: "G-0V4SW94QL9"
 };
 
 // Initialize Firebase
