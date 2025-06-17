@@ -22,10 +22,10 @@ interface SportLifeItem {
 }
 
 interface SportLifeCustomerOrder {
-  id: string; 
+  id: string;
   customerName: string;
   items: SportLifeItem[];
-  processingFeePercent: number; 
+  processingFeePercent: number;
 }
 
 interface SportLifeCatalogItem {
@@ -36,7 +36,7 @@ interface SportLifeCatalogItem {
 
 
 const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
-  const { currentUser } = useAppContext(); 
+  const { currentUser } = useAppContext();
   const { toast } = useToast();
 
   // --- Six Car Coffee State ---
@@ -50,7 +50,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const [currentSLCItems, setCurrentSLCItems] = useState<SportLifeItem[]>([]);
   const [currentSLCProcessingFee, setCurrentSLCProcessingFee] = useState(2);
   const [sportLifeBatchOrders, setSportLifeBatchOrders] = useState<SportLifeCustomerOrder[]>([]);
-  
+
   const [newSLItemName, setNewSLItemName] = useState('');
   const [newSLItemQuantity, setNewSLItemQuantity] = useState(1);
   const [newSLItemWholesaleCost, setNewSLItemWholesaleCost] = useState(0);
@@ -84,7 +84,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
     // TODO: Implement actual workflow: Inventory reduction, Vendor request, Task creation
     console.log(`Six Car Order: ${sixCarQuantity} bags. User: ${currentUser.uid}, Timestamp: ${new Date().toISOString()}`);
     alert(`(Stub) Ordered ${sixCarQuantity} bags for Six Car Coffee.`);
-    setSixCarQuantity(1); 
+    setSixCarQuantity(1);
   };
 
   // --- Canyon Country Church Handlers ---
@@ -111,7 +111,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
       setShowCatalogSuggestions(false);
       return;
     }
-    const suggestions = sportLifeCatalog.filter(item => 
+    const suggestions = sportLifeCatalog.filter(item =>
       item.itemName.toLowerCase().includes(newSLItemName.toLowerCase())
     );
     setFilteredCatalogItems(suggestions);
@@ -165,16 +165,16 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
       }
     });
   };
-  
+
   const handleSaveItemFromOrderToCatalog = (itemToSave: SportLifeItem) => {
     setSportLifeCatalog(prevCatalog => {
       const existingItemIndex = prevCatalog.findIndex(catItem => catItem.itemName.toLowerCase() === itemToSave.itemName.toLowerCase());
-      
+
       if (existingItemIndex > -1) {
         const existingCatalogItem = prevCatalog[existingItemIndex];
         if (itemToSave.wholesaleCost === existingCatalogItem.wholesaleCost) {
           alert(`"${itemToSave.itemName}" is already in catalog at $${itemToSave.wholesaleCost.toFixed(2)}. No change made.`);
-          return prevCatalog; 
+          return prevCatalog;
         } else if (itemToSave.wholesaleCost < existingCatalogItem.wholesaleCost) {
           toast({
             title: "Lower Price Warning",
@@ -224,7 +224,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
       if (existingItemIndex > -1 && prevCatalog[existingItemIndex].wholesaleCost !== newItem.wholesaleCost) {
         const existingCatalogItem = prevCatalog[existingItemIndex];
         const updatedCatalog = [...prevCatalog];
-        
+
         if (newItem.wholesaleCost < existingCatalogItem.wholesaleCost) {
             console.log(`Catalog item "${newItem.itemName}" updated to a LOWER price $${newItem.wholesaleCost.toFixed(2)} from $${existingCatalogItem.wholesaleCost.toFixed(2)} (triggered when adding to order).`);
         } else {
@@ -269,7 +269,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const handleRemoveCustomerOrderFromBatch = (customerOrderId: string) => {
     setSportLifeBatchOrders(prev => prev.filter(order => order.id !== customerOrderId));
   };
-  
+
   const handleSportLifeSubmitBatchOrder = () => {
     if (!currentUser) {
       alert("Please log in to submit an order.");
@@ -292,7 +292,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
 
   const calculateItemTotal = (item: SportLifeItem) => item.quantity * item.wholesaleCost;
 
-  const calculateCustomerOrderSubtotal = (order: SportLifeCustomerOrder) => 
+  const calculateCustomerOrderSubtotal = (order: SportLifeCustomerOrder) =>
     order.items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
 
   const calculateCustomerOrderTotal = (order: SportLifeCustomerOrder) => {
@@ -303,7 +303,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
   const totalBatchWholesaleCost = useMemo(() => {
     return sportLifeBatchOrders.reduce((batchSum, order) => batchSum + calculateCustomerOrderSubtotal(order), 0);
   }, [sportLifeBatchOrders]);
-  
+
   const totalBatchFinalAmount = useMemo(() => {
      return sportLifeBatchOrders.reduce((batchSum, order) => batchSum + calculateCustomerOrderTotal(order), 0);
   }, [sportLifeBatchOrders]);
@@ -331,10 +331,10 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
         alert("Wholesale cost cannot be negative.");
         return;
     }
-    setSportLifeCatalog(prevCatalog => 
-      prevCatalog.map(item => 
-        item.id === editingCatalogItem.id 
-        ? { ...item, itemName: editCatalogItemName.trim(), wholesaleCost: editCatalogItemCost } 
+    setSportLifeCatalog(prevCatalog =>
+      prevCatalog.map(item =>
+        item.id === editingCatalogItem.id
+        ? { ...item, itemName: editCatalogItemName.trim(), wholesaleCost: editCatalogItemCost }
         : item
       )
     );
@@ -351,7 +351,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
 
   const displayedCatalogItems = useMemo(() => {
     if (!catalogSearchTerm.trim()) return sportLifeCatalog;
-    return sportLifeCatalog.filter(item => 
+    return sportLifeCatalog.filter(item =>
       item.itemName.toLowerCase().includes(catalogSearchTerm.toLowerCase())
     );
   }, [sportLifeCatalog, catalogSearchTerm]);
@@ -473,9 +473,9 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
                     <div className="relative">
                       <Label htmlFor="newSLItemName">Item Name</Label>
-                      <Input 
-                        id="newSLItemName" 
-                        value={newSLItemName} 
+                      <Input
+                        id="newSLItemName"
+                        value={newSLItemName}
                         onChange={e => { setNewSLItemName(e.target.value); }}
                         onFocus={() => newSLItemName && filteredCatalogItems.length > 0 && setShowCatalogSuggestions(true)}
                         placeholder="e.g., Protein Powder X"
@@ -513,7 +513,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
                   </div>
                 </CardContent>
               </Card>
-              
+
               {currentSLCItems.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-md font-semibold text-slate-700">Items for {currentSLCCustomerName || "Current Customer"}:</h4>
@@ -553,7 +553,7 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
               </Button>
             </CardContent>
           </Card>
-          
+
           <Separator className="my-6"/>
 
           {/* Display Current Batch */}
@@ -627,10 +627,10 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
         <CardContent className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <Input 
-              type="search" 
-              placeholder="Search catalog..." 
-              className="pl-10" 
+            <Input
+              type="search"
+              placeholder="Search catalog..."
+              className="pl-10"
               value={catalogSearchTerm}
               onChange={(e) => setCatalogSearchTerm(e.target.value)}
             />
@@ -709,11 +709,24 @@ const SpecialOrdersPage = ({ pageId }: { pageId: string }) => {
           </p>
         </CardContent>
       </Card>
+
+      {/* Section D: Shay n Chell Scoops Orders */}
+      <Card className="content-fade-in-up" style={{ animationDelay: '750ms' }}>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-slate-900 flex items-center">
+            <Package size={28} className="mr-3 text-pink-500" /> Shay n Chell Scoops Orders
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-slate-600">
+            This section is a placeholder for Shay n Chell Scoops orders.
+            Functionality for this module will be implemented in a future update.
+          </p>
+        </CardContent>
+      </Card>
+
     </div>
   );
 };
 
 export default SpecialOrdersPage;
-
-
-    
