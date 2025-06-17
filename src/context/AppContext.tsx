@@ -6,7 +6,7 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
-  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList // Added ClipboardList
+  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail
 } from 'lucide-react';
 import { auth } from '@/lib/firebase'; // Import Firebase auth
 import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth'; // Import User type and auth functions
@@ -19,7 +19,8 @@ import InvoicingPage from '@/components/pages/InvoicingPage';
 import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage';
 import CheckWriterPage from '@/components/pages/CheckWriterPage';
 import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
-import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage'; // Import new page
+import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
+import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage'; // Import new page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -78,7 +79,8 @@ const navGroupsData: NavGroup[] = [
     items: [
       { id: 'financial_dashboard', name: 'Financial Dashboard', icon: LayoutGrid, title: 'Financial Overview', description: "View key financial metrics, sales reports, and expense tracking.", component: GenericPlaceholderPage },
       { id: 'sales_tax_runner', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Runner', description: "Calculate and prepare sales tax reports for remittance.", component: SalesTaxRunnerPage },
-      { id: 'check_writer', name: 'Check Writer', icon: Printer, title: 'Check & Envelope Printer', description: "Generate and print checks for vendors and other payees.", component: CheckWriterPage },
+      { id: 'check_writer', name: 'Check Printer', icon: Printer, title: 'Check Printer', description: "Generate and print checks for vendors and other payees.", component: CheckWriterPage },
+      { id: 'envelope_printer', name: 'Envelope Printer', icon: Mail, title: 'Envelope Printer', description: "Design and print #10 envelopes or simple name-only envelopes.", component: EnvelopePrinterPage },
       { id: 'analytics', name: 'Data Analytics', icon: BarChart3, title: 'Data Analytics', description: "Analyze sales trends, customer behavior, and operational efficiency.", component: GenericPlaceholderPage },
     ],
   },
@@ -104,17 +106,22 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     const initializeAuth = async () => {
       console.log("AppProvider: Initializing auth. Checking for redirect result...");
       try {
+        // Check for redirect result first
         const result = await getRedirectResult(auth);
         if (result) {
+          // This means the user has just signed in via redirect.
+          // onAuthStateChanged will shortly fire with the user.
           console.log("AppProvider: Google Sign-In redirect result processed for user:", result.user?.uid);
-          // onAuthStateChanged will handle setting currentUser. setLoadingAuth will be handled by onAuthStateChanged.
+          // No need to setCurrentUser or setLoadingAuth here, onAuthStateChanged will handle it.
         } else {
-          console.log("AppProvider: No redirect result found.");
+          console.log("AppProvider: No redirect result found. User might be already signed in or not signed in at all.");
         }
       } catch (error) {
         console.error("AppProvider: Error processing Google Sign-In redirect result:", error);
+        // Potentially set an error state or alert the user
       }
-
+      // Regardless of redirect, set up the onAuthStateChanged listener.
+      // This listener is the source of truth for the user's auth state.
       console.log("AppProvider: Setting up onAuthStateChanged listener.");
       const unsubscribe = auth.onAuthStateChanged(user => {
         if (user) {
@@ -130,6 +137,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     const unsubscribePromise = initializeAuth();
 
+    // Cleanup function for the useEffect hook
     return () => {
       unsubscribePromise.then(unsubscribe => {
         if (unsubscribe) {
@@ -147,6 +155,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         console.log(`Attempting dev login for: ${email}`);
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
         console.log("Dev login successful:", userCredential.user);
+        // onAuthStateChanged will handle setCurrentUser and setLoadingAuth
         return userCredential;
       } catch (error) {
         console.error("Dev login error:", error);
@@ -163,6 +172,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("Attempting Google Sign-In with redirect...");
       await signInWithRedirect(auth, provider);
+      // After this, the page will redirect to Google.
+      // The result will be handled by getRedirectResult in the useEffect above when the user returns.
     } catch (error) {
       console.error("Google Sign-In with redirect error:", error);
       alert(`Google Sign-In Failed: ${(error as Error).message}`);
@@ -177,7 +188,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         delete (window as any).devLogin;
       };
     }
-  }, [devLogin]); 
+  }, [devLogin]); // Added devLogin to dependency array
 
 
   const getActivePage = (): NavItemStructure | undefined => {
@@ -185,9 +196,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const item = group.items.find(navItem => navItem.id === activePageId);
       if (item) return item;
     }
+    // Fallback to the first item of the first group if activePageId is somehow invalid
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
+        // console.warn(`Active page ID "${activePageId}" not found. Falling back to "${firstGroup.items[0].id}".`);
+        // setActivePageId(firstGroup.items[0].id); // Optionally auto-correct, or just return it
         const fallbackId = firstGroup.items[0].id;
+        // If you decide to auto-correct, ensure this doesn't cause infinite loops
+        // For now, just return it as a potential active page without changing state here
         return firstGroup.items[0];
     }
     return undefined;
@@ -208,5 +224,7 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+    
 
     
