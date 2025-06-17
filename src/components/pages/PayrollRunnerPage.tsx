@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { UploadCloud, AlertTriangle, CheckCircle2, FilePenLine, Trash2, Loader2, LogIn } from 'lucide-react'; // Added LogIn
+import { UploadCloud, AlertTriangle, CheckCircle2, FilePenLine, Trash2, Loader2, LogIn, Info } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { db } from '@/lib/firebase'; 
 import { collection, doc, getDocs, addDoc, setDoc, deleteDoc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
@@ -239,7 +239,7 @@ const validateSingleEntry = (entry: Omit<TimeEntry, 'id' | 'durationMinutes' | '
 
 
 const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
-    const { currentUser, loadingAuth, signInWithGoogle } = useAppContext(); // Added signInWithGoogle
+    const { currentUser, loadingAuth, devLogin, signInWithGoogle } = useAppContext();
     const [viewMode, setViewMode] = useState<'upload' | 'review'>('upload');
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -506,11 +506,25 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
                     <CardTitle>Access Denied</CardTitle>
                 </CardHeader>
                 <CardContent className="text-center space-y-4">
-                    <p className="text-slate-600">Please log in to use the Payroll Runner.</p>
+                    <p className="text-slate-600 mb-4">Please log in to use the Payroll Runner.</p>
+                    
+                    {/* Google Sign-In Button removed for now due to Studio-wide issues */}
+                    {/* 
                     <Button onClick={signInWithGoogle} variant="default" size="lg">
                         <LogIn className="mr-2 h-5 w-5" />
                         Sign in with Google
-                    </Button>
+                    </Button> 
+                    */}
+                    
+                    <Alert variant="default" className="text-left bg-sky-50 border-sky-200">
+                        <Info className="h-5 w-5 text-sky-600" />
+                        <AlertTitle className="text-sky-700">Developer Login</AlertTitle>
+                        <AlertDescription className="text-sky-600">
+                            For development, use the <code>devLogin('email', 'password')</code>
+                            function available in the browser console.
+                        </AlertDescription>
+                    </Alert>
+
                 </CardContent>
             </Card>
         );
@@ -695,6 +709,5 @@ const PayrollRunnerPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default PayrollRunnerPage;
-
 
     
