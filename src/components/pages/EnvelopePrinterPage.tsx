@@ -85,14 +85,14 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
             <title>Print Envelope</title>
             <style>
               @page { 
-                size: 4.125in 9.5in; /* Standard #10 Envelope size (width x height for typical feed) */
+                size: 9.5in 4.125in; /* Standard #10 Envelope size (width x height for typical feed) */
                 margin: 0; 
               }
               body { 
                 margin: 0; 
                 padding: 0;
-                width: 4.125in; /* Match @page width */
-                height: 9.5in; /* Match @page height */
+                width: 9.5in; /* Match @page width */
+                height: 4.125in; /* Match @page height */
                 display: flex; 
                 align-items: center; 
                 justify-content: center; 
