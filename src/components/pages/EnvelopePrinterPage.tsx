@@ -84,15 +84,27 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
           <head>
             <title>Print Envelope</title>
             <style>
-              @page { size: 4.125in 9.5in; margin: 0; } /* Standard #10 Envelope size */
-              body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; }
+              @page { 
+                size: 4.125in 9.5in; /* Standard #10 Envelope size (width x height for typical feed) */
+                margin: 0; 
+              }
+              body { 
+                margin: 0; 
+                padding: 0;
+                width: 4.125in; /* Match @page width */
+                height: 9.5in; /* Match @page height */
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                overflow: hidden;
+              }
               .name-container {
                 font-family: 'Verdana', sans-serif;
                 font-weight: bold;
-                font-size: 1.6875rem; /* Approx 27px, 50% larger than 1.125rem (18px for text-lg) */
+                font-size: 1.6875rem; /* Approx 27px (18px * 1.5) */
                 text-align: center;
                 line-height: 1.2;
-                max-width: 80%; /* Ensure name doesn't overflow too much */
+                max-width: 90%; /* Max width of name relative to envelope width */
                 word-break: break-word;
               }
             </style>
@@ -102,7 +114,19 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
             <script>
               window.onload = function() {
                 window.print();
-                window.onafterprint = function() { window.close(); };
+                // Attempt to close the window after print dialog interaction
+                // Some browsers might block this, or onafterprint might not fire consistently
+                var printed = false;
+                window.onafterprint = function() {
+                  printed = true;
+                  window.close();
+                };
+                // Fallback for browsers that might not fire onafterprint or if user cancels quickly
+                setTimeout(function() {
+                  if (!printed && !printWindow.closed) {
+                    printWindow.close();
+                  }
+                }, 2000); // Close after 2 seconds if not already closed
               }
             </script>
           </body>
@@ -261,3 +285,4 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default EnvelopePrinterPage;
+
