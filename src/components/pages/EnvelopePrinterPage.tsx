@@ -25,12 +25,9 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   const [showStandardPreview, setShowStandardPreview] = useState(false);
   const [showNameOnlyPreview, setShowNameOnlyPreview] = useState(false);
   
-  // For dynamic script loading, e.g., jsPDF, if not already handled globally
   const [isPdfLibReady, setIsPdfLibReady] = useState(false);
 
   useEffect(() => {
-    // Placeholder for jsPDF loading if needed specifically for this page
-    // Similar to CheckWriterPage, if jsPDF is needed for actual generation
     if ((window as any).jspdf) {
         setIsPdfLibReady(true);
         return;
@@ -51,18 +48,16 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   ) => {
     const setter = type === 'return' ? setReturnAddress : setRecipientAddress;
     setter(prev => ({ ...prev, [field]: value }));
-    setShowStandardPreview(false); // Hide preview on input change
+    setShowStandardPreview(false); 
   };
 
   const handleNameOnlyChange = (value: string) => {
     setNameOnly(value);
-    setShowNameOnlyPreview(false); // Hide preview on input change
+    setShowNameOnlyPreview(false); 
   }
 
   const generateStandardEnvelope = () => {
-    // Stub: Log data and show preview
     console.log("Generating Standard Envelope with data:", { returnAddress, recipientAddress });
-    // TODO: Implement actual PDF generation with jsPDF
     if (!isPdfLibReady) {
         alert("PDF library not ready. Please wait a moment.");
         return;
@@ -72,30 +67,56 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
         return;
     }
     setShowStandardPreview(true);
-    alert("(Stub) Standard #10 Envelope PDF would be generated here.");
+    alert("(Stub) Standard #10 Envelope PDF would be generated here using jsPDF.");
   };
 
-  const generateNameOnlyEnvelope = () => {
-    // Stub: Log data and show preview
-    console.log("Generating Name-Only Envelope for:", nameOnly);
-    // TODO: Implement actual PDF generation with jsPDF
-     if (!isPdfLibReady) {
-        alert("PDF library not ready. Please wait a moment.");
-        return;
+  const printNameOnlyEnvelope = () => {
+    if (!nameOnly.trim()) {
+      alert("Please enter a name.");
+      return;
     }
-    if(!nameOnly.trim()) {
-        alert("Please enter a name.");
-        return;
+    setShowNameOnlyPreview(true); // Keep showing the preview on the page
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Envelope</title>
+            <style>
+              @page { size: 4.125in 9.5in; margin: 0; } /* Standard #10 Envelope size */
+              body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; width: 100vw; }
+              .name-container {
+                font-family: 'Verdana', sans-serif;
+                font-weight: bold;
+                font-size: 1.6875rem; /* Approx 27px, 50% larger than 1.125rem (18px for text-lg) */
+                text-align: center;
+                line-height: 1.2;
+                max-width: 80%; /* Ensure name doesn't overflow too much */
+                word-break: break-word;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="name-container">${nameOnly.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.onafterprint = function() { window.close(); };
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } else {
+      alert("Could not open print window. Please check your browser's pop-up settings.");
     }
-    setShowNameOnlyPreview(true);
-    alert("(Stub) Name-Only Envelope PDF would be generated here.");
   };
 
   const getPostnetBarcode = (zip: string) => {
-    // Basic check for zip to show placeholder. Real POSTNET is complex.
     const zipDigits = zip.replace(/[^0-9]/g, '');
     if (zipDigits.length >= 5) {
-      // Simplified placeholder, actual POSTNET has specific bar heights and spacing
       return "| | | | |  | | | |  | | | |  | | | |  | | | |  | | | | |";
     }
     return "";
@@ -127,7 +148,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Return Address */}
                 <fieldset className="space-y-3 border border-brand-slate-200 p-4 rounded-xl">
                   <legend className="text-md font-semibold px-1 text-brand-text-legend">Return Address (Optional)</legend>
                   <div>
@@ -144,7 +164,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                   </div>
                 </fieldset>
 
-                {/* Recipient Address */}
                 <fieldset className="space-y-3 border border-brand-slate-200 p-4 rounded-xl">
                   <legend className="text-md font-semibold px-1 text-brand-text-legend">Recipient Address</legend>
                   <div>
@@ -162,7 +181,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                 </fieldset>
               </div>
               <Button onClick={generateStandardEnvelope} size="action" className="w-full md:w-auto" disabled={!isPdfLibReady}>
-                <Printer size={18} className="mr-2"/> {isPdfLibReady ? "Generate Standard Envelope" : "Loading Tools..."}
+                <Printer size={18} className="mr-2"/> {isPdfLibReady ? "Generate Standard Envelope PDF" : "Loading Tools..."}
               </Button>
 
               {showStandardPreview && (
@@ -172,7 +191,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     className="relative w-full aspect-[9.5/4.125] bg-white border border-slate-400 shadow-md mx-auto max-w-2xl p-2 text-xs"
                     style={{ fontFamily: "'Courier New', Courier, monospace" }}
                   >
-                    {/* Return Address */}
                     {returnAddress.name && (
                         <div className="absolute top-3 left-3 leading-tight">
                         <div>{returnAddress.name}</div>
@@ -180,20 +198,14 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                         <div>{returnAddress.cityStateZip}</div>
                         </div>
                     )}
-
-                    {/* Stamp Area */}
                     <div className="absolute top-2 right-2 w-10 h-10 border border-slate-300 flex items-center justify-center text-slate-400 text-[0.6rem]">
                         STAMP
                     </div>
-
-                    {/* Recipient Address */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center leading-relaxed w-1/2">
                         <div className="font-semibold">{recipientAddress.name}</div>
                         <div>{recipientAddress.street}</div>
                         <div>{recipientAddress.cityStateZip}</div>
                     </div>
-
-                    {/* POSTNET Barcode Placeholder */}
                     {getPostnetBarcode(recipientAddress.cityStateZip) && (
                         <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 text-center text-sm tracking-[0.15em]">
                         {getPostnetBarcode(recipientAddress.cityStateZip)}
@@ -217,8 +229,8 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                 <Label htmlFor="nameOnlyName" className="flex items-center gap-1 text-sm"><User size={14}/>Person's Name</Label>
                 <Input id="nameOnlyName" value={nameOnly} onChange={e => handleNameOnlyChange(e.target.value)} placeholder="e.g., John Doe" />
               </div>
-              <Button onClick={generateNameOnlyEnvelope} size="action" className="w-full md:w-auto" disabled={!isPdfLibReady}>
-                <Printer size={18} className="mr-2"/> {isPdfLibReady ? "Generate Name-Only Envelope" : "Loading Tools..."}
+              <Button onClick={printNameOnlyEnvelope} size="action" className="w-full md:w-auto">
+                <Printer size={18} className="mr-2"/> Print Name-Only Envelope
               </Button>
 
               {showNameOnlyPreview && (
@@ -226,9 +238,15 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                   <h3 className="text-lg font-semibold text-sky-700 mb-3 text-center">Envelope Preview (Name-Only)</h3>
                   <div 
                     className="relative w-full aspect-[9.5/4.125] bg-white border border-slate-400 shadow-md mx-auto max-w-2xl p-2 flex items-center justify-center"
-                    style={{ fontFamily: "'Courier New', Courier, monospace" }}
                   >
-                    <div className="text-center text-lg font-semibold">
+                    <div 
+                      className="text-center"
+                      style={{ 
+                        fontFamily: "'Verdana', sans-serif", 
+                        fontWeight: 'bold', 
+                        fontSize: '1.6875rem' /* Approx 27px */
+                      }}
+                    >
                         {nameOnly}
                     </div>
                   </div>
@@ -243,5 +261,3 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default EnvelopePrinterPage;
-
-    
