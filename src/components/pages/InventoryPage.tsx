@@ -6,21 +6,28 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, FileText, Send, Search } from 'lucide-react'; // Added Search icon
+import { PlusCircle, FileText, Send, Search, ListPlus } from 'lucide-react'; // Added ListPlus
+import { useAppContext } from '@/context/AppContext'; // Import context
 
-// TODO: Fetch data from Firestore collection 'inventory'
-const sampleInventoryData = [
-  { id: '1', itemName: 'Espresso Beans (Dark Roast)', category: 'Coffee Beans', inStock: 25, unit: 'kg', parLevel: 10, primaryVendor: 'Artisan Coffee Roasters' },
-  { id: '2', itemName: '12oz Paper Cups', category: 'Disposables', inStock: 1500, unit: 'pcs', parLevel: 500, primaryVendor: 'EcoPack Supplies' },
-  { id: '3', itemName: 'Oat Milk (Barista Edition)', category: 'Dairy Alternatives', inStock: 30, unit: 'liters', parLevel: 15, primaryVendor: 'PlantFirst Milks' },
-  { id: '4', itemName: 'Croissants (Butter)', category: 'Pastries', inStock: 45, unit: 'pcs', parLevel: 20, primaryVendor: 'Local Bakery Co.' },
-  { id: '5', itemName: 'Cleaning Solution (All Purpose)', category: 'Supplies', inStock: 5, unit: 'liters', parLevel: 2, primaryVendor: 'CleanPro Inc.' },
-  { id: '6', itemName: 'Whole Milk', category: 'Dairy', inStock: 20, unit: 'gallons', parLevel: 10, primaryVendor: 'FarmFresh Dairy' },
+// Sample data - consider moving to a shared location or fetching from Firestore
+export const sampleInventoryData = [
+  { id: 'inv-item-1', itemName: 'Espresso Beans (Dark Roast)', category: 'Coffee Beans', inStock: 25, unit: 'kg', parLevel: 10, primaryVendor: 'Artisan Coffee Roasters', sku: 'CR-DR-1KG' },
+  { id: 'inv-item-2', itemName: '12oz Paper Cups', category: 'Disposables', inStock: 1500, unit: 'pcs', parLevel: 500, primaryVendor: 'EcoPack Supplies', sku: 'DP-PC-12OZ' },
+  { id: 'inv-item-3', itemName: 'Oat Milk (Barista Edition)', category: 'Dairy Alternatives', inStock: 30, unit: 'liters', parLevel: 15, primaryVendor: 'PlantFirst Milks', sku: 'DA-OM-1L' },
+  { id: 'inv-item-4', itemName: 'Croissants (Butter)', category: 'Pastries', inStock: 45, unit: 'pcs', parLevel: 20, primaryVendor: 'Local Bakery Co.', sku: 'PS-BC-UNIT' },
+  { id: 'inv-item-5', itemName: 'Cleaning Solution (All Purpose)', category: 'Supplies', inStock: 5, unit: 'liters', parLevel: 2, primaryVendor: 'CleanPro Inc.', sku: 'SP-CL-1L' },
+  { id: 'inv-item-6', itemName: 'Whole Milk', category: 'Dairy', inStock: 20, unit: 'gallons', parLevel: 10, primaryVendor: 'FarmFresh Dairy', sku: 'DR-WM-1G' },
+  { id: 'inv-item-7', itemName: 'Colombian Supremo (Medium Roast)', category: 'Coffee Beans', unit: 'kg', sku: 'CR-CS-1KG', inStock: 15, parLevel: 8, primaryVendor: 'Artisan Coffee Roasters' },
+  { id: 'inv-item-8', itemName: 'Decaf Blend', category: 'Coffee Beans', unit: '500g bags', sku: 'CR-DC-500G', inStock: 10, parLevel: 5, primaryVendor: 'Artisan Coffee Roasters' },
+  { id: 'inv-item-9', itemName: 'Single Origin Ethiopian Yirgacheffe', category: 'Coffee Beans', unit: 'kg', sku: 'CR-ET-1KG', inStock: 7, parLevel: 4, primaryVendor: 'Artisan Coffee Roasters' },
 ];
 
+
 const InventoryPage = ({ pageId }: { pageId: string }) => {
+  const { setActivePageId } = useAppContext();
+
   return (
-    <Card> {/* Glassmorphism applied by Card component */}
+    <Card>
       <CardHeader className="pb-4">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <CardTitle className="text-2xl font-bold text-slate-900">Inventory Management</CardTitle>
@@ -29,20 +36,24 @@ const InventoryPage = ({ pageId }: { pageId: string }) => {
             <Input
               type="search"
               placeholder="Search inventory items..."
-              className="pl-10" // Padding for icon
+              className="pl-10"
             />
           </div>
         </div>
         <div className="flex flex-wrap gap-3 mt-4">
-          <Button 
-            variant="default" 
+          <Button
+            variant="default"
             size="action"
             onClick={() => { /* TODO: Call Firebase function to create new item */ console.log("Add New Item"); }}
           >
             <PlusCircle size={18} className="mr-2" /> Add New Item
           </Button>
-          <Button variant="outline" className="text-sm rounded-lg py-2 px-4"> {/* Adjusted secondary button */}
-            <FileText size={16} className="mr-2 text-slate-400" /> Create Purchase Order
+          <Button
+            variant="outline"
+            className="text-sm rounded-lg py-2 px-4"
+            onClick={() => setActivePageId('create_purchase_order')} // Navigate to Create PO page
+          >
+            <ListPlus size={16} className="mr-2 text-slate-400" /> Create Purchase Order
           </Button>
           <Button variant="outline" className="text-sm rounded-lg py-2 px-4">
             <Send size={16} className="mr-2 text-slate-400" /> Transfer Stock

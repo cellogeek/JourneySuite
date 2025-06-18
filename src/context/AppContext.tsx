@@ -7,10 +7,10 @@ import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
-  ShoppingCart, ClipboardCheck // Added ClipboardCheck
+  ShoppingCart, ClipboardCheck, ListPlus // Added ListPlus
 } from 'lucide-react';
-import { auth } from '@/lib/firebase'; // Import Firebase auth
-import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth'; // Import User type and auth functions
+import { auth } from '@/lib/firebase';
+import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 
 // Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
@@ -22,7 +22,8 @@ import CheckWriterPage from '@/components/pages/CheckWriterPage';
 import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
 import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
 import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
-import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage'; // Import new page
+import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
+import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage'; // New page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -40,6 +41,26 @@ export interface NavGroup {
   items: NavItemStructure[];
 }
 
+// --- Purchase Order Interfaces (centralized here) ---
+export interface PurchaseOrderItem {
+  id: string; // This will be the inventory item's ID
+  name: string;
+  sku?: string;
+  quantity: number;
+  unit: string;
+  isOrdered: boolean;
+  // Potentially add wholesaleCost if needed for calculations on PO page later
+}
+
+export interface PurchaseOrder {
+  id: string; // PO's own unique ID
+  vendorName: string;
+  orderDate: string;
+  status: 'Draft' | 'Pending Ordering' | 'Partially Ordered' | 'Order Placed' | 'Cycle Complete';
+  items: PurchaseOrderItem[];
+}
+// --- End Purchase Order Interfaces ---
+
 interface AppContextType {
   activePageId: string;
   setActivePageId: (id: string) => void;
@@ -47,8 +68,10 @@ interface AppContextType {
   getActivePage: () => NavItemStructure | undefined;
   currentUser: User | null;
   loadingAuth: boolean;
-  devLogin: (email: string, pass: string) => Promise<UserCredential | void>; 
+  devLogin: (email: string, pass: string) => Promise<UserCredential | void>;
   signInWithGoogle: () => Promise<void>;
+  activePurchaseOrder: PurchaseOrder | null; // New state for active PO
+  setActivePurchaseOrder: (po: PurchaseOrder | null) => void; // Setter for active PO
 }
 
 const navGroupsData: NavGroup[] = [
@@ -72,7 +95,8 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Operations & Inventory',
     items: [
       { id: 'inventory', name: 'Inventory', icon: Boxes, title: 'Inventory Management', component: InventoryPage },
-      { id: 'purchase_orders', name: 'Purchase Orders', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
+      { id: 'create_purchase_order', name: 'Create PO', icon: ListPlus, title: 'Create Purchase Order', description: "Build a new purchase order for a vendor.", component: CreatePurchaseOrderPage },
+      { id: 'purchase_orders', name: 'Manage POs', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
       { id: 'vendors', name: 'Vendors', icon: Truck, title: 'Vendor Management', description: "Manage vendor contracts, orders, and relationships.", component: GenericPlaceholderPage },
       { id: 'special_orders', name: 'Special Orders', icon: ClipboardList, title: 'Special Orders Management', description: "Manage unique, recurring, and custom orders.", component: SpecialOrdersPage },
     ],
@@ -104,27 +128,21 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activePageId, setActivePageId] = useState<string>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [activePurchaseOrder, setActivePurchaseOrder] = useState<PurchaseOrder | null>(null); // New state
 
   useEffect(() => {
     const initializeAuth = async () => {
       console.log("AppProvider: Initializing auth. Checking for redirect result...");
       try {
-        // Check for redirect result first
         const result = await getRedirectResult(auth);
         if (result) {
-          // This means the user has just signed in via redirect.
-          // onAuthStateChanged will shortly fire with the user.
           console.log("AppProvider: Google Sign-In redirect result processed for user:", result.user?.uid);
-          // No need to setCurrentUser or setLoadingAuth here, onAuthStateChanged will handle it.
         } else {
           console.log("AppProvider: No redirect result found. User might be already signed in or not signed in at all.");
         }
       } catch (error) {
         console.error("AppProvider: Error processing Google Sign-In redirect result:", error);
-        // Potentially set an error state or alert the user
       }
-      // Regardless of redirect, set up the onAuthStateChanged listener.
-      // This listener is the source of truth for the user's auth state.
       console.log("AppProvider: Setting up onAuthStateChanged listener.");
       const unsubscribe = auth.onAuthStateChanged(user => {
         if (user) {
@@ -133,14 +151,13 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           console.log("AppProvider: User is signed out (onAuthStateChanged).");
         }
         setCurrentUser(user);
-        setLoadingAuth(false); // Auth state is definitively determined here.
+        setLoadingAuth(false);
       });
-      return unsubscribe; // Return the unsubscribe function for cleanup
+      return unsubscribe;
     };
 
     const unsubscribePromise = initializeAuth();
 
-    // Cleanup function for the useEffect hook
     return () => {
       unsubscribePromise.then(unsubscribe => {
         if (unsubscribe) {
@@ -158,7 +175,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         console.log(`Attempting dev login for: ${email}`);
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
         console.log("Dev login successful:", userCredential.user);
-        // onAuthStateChanged will handle setCurrentUser and setLoadingAuth
         return userCredential;
       } catch (error) {
         console.error("Dev login error:", error);
@@ -169,14 +185,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       alert("This function is for development purposes only.");
     }
   };
-  
+
   const signInWithGoogle = async (): Promise<void> => {
     const provider = new GoogleAuthProvider();
     try {
       console.log("Attempting Google Sign-In with redirect...");
       await signInWithRedirect(auth, provider);
-      // After this, the page will redirect to Google.
-      // The result will be handled by getRedirectResult in the useEffect above when the user returns.
     } catch (error) {
       console.error("Google Sign-In with redirect error:", error);
       alert(`Google Sign-In Failed: ${(error as Error).message}`);
@@ -191,7 +205,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         delete (window as any).devLogin;
       };
     }
-  }, [devLogin]); // Added devLogin to dependency array
+  }, [devLogin]);
 
 
   const getActivePage = (): NavItemStructure | undefined => {
@@ -199,14 +213,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const item = group.items.find(navItem => navItem.id === activePageId);
       if (item) return item;
     }
-    // Fallback to the first item of the first group if activePageId is somehow invalid
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
-        // console.warn(`Active page ID "${activePageId}" not found. Falling back to "${firstGroup.items[0].id}".`);
-        // setActivePageId(firstGroup.items[0].id); // Optionally auto-correct, or just return it
         const fallbackId = firstGroup.items[0].id;
-        // If you decide to auto-correct, ensure this doesn't cause infinite loops
-        // For now, just return it as a potential active page without changing state here
         return firstGroup.items[0];
     }
     return undefined;
@@ -214,7 +223,12 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AppContext.Provider value={{ activePageId, setActivePageId, navGroups: navGroupsData, getActivePage, currentUser, loadingAuth, devLogin, signInWithGoogle }}>
+    <AppContext.Provider value={{
+      activePageId, setActivePageId,
+      navGroups: navGroupsData, getActivePage,
+      currentUser, loadingAuth, devLogin, signInWithGoogle,
+      activePurchaseOrder, setActivePurchaseOrder // Provide new state and setter
+    }}>
       {children}
     </AppContext.Provider>
   );
