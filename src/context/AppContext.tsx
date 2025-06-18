@@ -9,8 +9,10 @@ import {
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
   ShoppingCart, ClipboardCheck, ListPlus, ListChecks
 } from 'lucide-react';
-import { auth } from '@/lib/firebase';
-import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+// Firebase auth is not used for login/logout in this bypassed state, but db might be.
+// import { auth } from '@/lib/firebase'; 
+// import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import type { User } from 'firebase/auth'; // Keep User type for mock
 
 // Import page components
 import DashboardPage from '@/components/pages/DashboardPage';
@@ -25,7 +27,7 @@ import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
 import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
 import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage';
 import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage';
-import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage'; // New Page
+import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage';
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -68,13 +70,34 @@ interface AppContextType {
   setActivePageId: (id: string) => void;
   navGroups: NavGroup[];
   getActivePage: () => NavItemStructure | undefined;
-  currentUser: User | null;
-  loadingAuth: boolean;
-  devLogin: (email: string, pass: string) => Promise<UserCredential | void>;
-  signInWithGoogle: () => Promise<void>;
-  activePurchaseOrder: PurchaseOrder | null; // New state for active PO
-  setActivePurchaseOrder: (po: PurchaseOrder | null) => void; // Setter for active PO
+  currentUser: User | null; // Will be a mock user
+  loadingAuth: boolean; // Will be false
+  // devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // Removed
+  // signInWithGoogle: () => Promise<void>; // Removed
+  activePurchaseOrder: PurchaseOrder | null;
+  setActivePurchaseOrder: (po: PurchaseOrder | null) => void;
 }
+
+// TODO: Re-implement Firebase authentication. Currently bypassed with a mock user.
+const MOCK_USER: User = {
+  uid: 'mock-user-uid-001',
+  email: 'dev@example.com',
+  displayName: 'Dev User',
+  photoURL: null,
+  emailVerified: true,
+  isAnonymous: false,
+  metadata: {},
+  providerData: [],
+  providerId: 'mock',
+  refreshToken: '',
+  tenantId: null,
+  delete: async () => {},
+  getIdToken: async () => '',
+  getIdTokenResult: async () => ({} as any),
+  reload: async () => {},
+  toJSON: () => ({}),
+};
+
 
 const navGroupsData: NavGroup[] = [
   {
@@ -130,38 +153,18 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activePageId, setActivePageId] = useState<string>('dashboard');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
-  const [activePurchaseOrder, setActivePurchaseOrder] = useState<PurchaseOrder | null>(null); // New state
+  const [currentUser, setCurrentUser] = useState<User | null>(MOCK_USER); // Set mock user by default
+  const [loadingAuth, setLoadingAuth] = useState(false); // Set to false by default
+  const [activePurchaseOrder, setActivePurchaseOrder] = useState<PurchaseOrder | null>(null);
 
+  // Firebase auth listener logic is removed for bypass.
+  // Original useEffect for auth is commented out or removed.
+  /*
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log("AppProvider: Initializing auth. Checking for redirect result...");
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          console.log("AppProvider: Google Sign-In redirect result processed for user:", result.user?.uid);
-        } else {
-          console.log("AppProvider: No redirect result found. User might be already signed in or not signed in at all.");
-        }
-      } catch (error) {
-        console.error("AppProvider: Error processing Google Sign-In redirect result:", error);
-      }
-      console.log("AppProvider: Setting up onAuthStateChanged listener.");
-      const unsubscribe = auth.onAuthStateChanged(user => {
-        if (user) {
-          console.log("AppProvider: User is signed in (onAuthStateChanged). UID:", user.uid);
-        } else {
-          console.log("AppProvider: User is signed out (onAuthStateChanged).");
-        }
-        setCurrentUser(user);
-        setLoadingAuth(false);
-      });
-      return unsubscribe;
+      // ... original auth logic ...
     };
-
     const unsubscribePromise = initializeAuth();
-
     return () => {
       unsubscribePromise.then(unsubscribe => {
         if (unsubscribe) {
@@ -171,46 +174,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       });
     };
   }, []);
+  */
 
-
-  const devLogin = async (email: string, pass: string): Promise<UserCredential | void> => {
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        console.log(`Attempting dev login for: ${email}`);
-        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
-        console.log("Dev login successful:", userCredential.user);
-        return userCredential;
-      } catch (error) {
-        console.error("Dev login error:", error);
-        alert(`Dev Login Failed: ${(error as Error).message}`);
-      }
-    } else {
-      console.warn("devLogin is only available in development mode.");
-      alert("This function is for development purposes only.");
-    }
-  };
-
-  const signInWithGoogle = async (): Promise<void> => {
-    const provider = new GoogleAuthProvider();
-    try {
-      console.log("Attempting Google Sign-In with redirect...");
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error("Google Sign-In with redirect error:", error);
-      alert(`Google Sign-In Failed: ${(error as Error).message}`);
-    }
-  };
-
+  // devLogin and signInWithGoogle are removed as auth is bypassed.
+  /*
+  const devLogin = async (email: string, pass: string): Promise<UserCredential | void> => { ... };
+  const signInWithGoogle = async (): Promise<void> => { ... };
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       (window as any).devLogin = devLogin;
-      console.log("devLogin function exposed on window object for development. Usage: await window.devLogin('email', 'password')");
-      return () => {
-        delete (window as any).devLogin;
-      };
+      // ...
     }
   }, [devLogin]);
-
+  */
 
   const getActivePage = (): NavItemStructure | undefined => {
     for (const group of navGroupsData) {
@@ -219,7 +195,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
-        const fallbackId = firstGroup.items[0].id;
         return firstGroup.items[0];
     }
     return undefined;
@@ -230,8 +205,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       activePageId, setActivePageId,
       navGroups: navGroupsData, getActivePage,
-      currentUser, loadingAuth, devLogin, signInWithGoogle,
-      activePurchaseOrder, setActivePurchaseOrder // Provide new state and setter
+      currentUser, loadingAuth,
+      activePurchaseOrder, setActivePurchaseOrder
     }}>
       {children}
     </AppContext.Provider>
@@ -245,5 +220,3 @@ export const useAppContext = () => {
   }
   return context;
 };
-
-    

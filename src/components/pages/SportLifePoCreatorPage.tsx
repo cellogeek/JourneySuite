@@ -9,17 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+// Alert component from ShadCN is not directly used here for messages, using useToast instead.
 import { useToast } from "@/hooks/use-toast";
 import { useAppContext } from '@/context/AppContext';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDocs, addDoc, setDoc, updateDoc, onSnapshot, query, where, writeBatch } from 'firebase/firestore';
-import { PlusCircle, Package, ShoppingCart, CheckCircle2, XCircle, Edit, Save, UserPlus, Users, DollarSign, Loader2, LogIn, Info, Trash2 } from 'lucide-react';
+import { collection, doc, getDocs, addDoc, setDoc, updateDoc, onSnapshot, query, where, writeBatch, deleteDoc } from 'firebase/firestore'; // Added deleteDoc
+import { PlusCircle, Package, ShoppingCart, CheckCircle2, XCircle, Edit, Save, UserPlus, Users, DollarSign, Loader2, Trash2 } from 'lucide-react'; // Removed LogIn, Info. Added Trash2
 
 interface SportLifeItemDef {
   id: string;
   name: string;
   wholesaleCost: number;
+  _deleted?: boolean; // For soft delete
 }
 
 interface SportLifeCustomerDef {
@@ -43,9 +44,10 @@ interface PurchaseOrderDef {
   items: PoItem[];
   subtotal: number;
   orderDate: string;
-  status: 'saved' | 'submitted';
+  status: 'saved' | 'submitted' | 'deleted'; // Added 'deleted' for soft delete
   processingFeePercentage?: number;
   finalTotal?: number;
+  _deleted?: boolean; // For soft delete
 }
 
 interface FinalPoDraftDef {
@@ -57,7 +59,7 @@ interface FinalPoDraftDef {
 }
 
 const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
-  const { currentUser, loadingAuth, devLogin } = useAppContext();
+  const { currentUser, loadingAuth } = useAppContext(); // Removed devLogin
   const { toast } = useToast();
 
   // Data States
@@ -85,11 +87,12 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
 
 
   const showAppToast = useCallback((title: string, description: string, variant: 'default' | 'destructive' = 'default') => {
-    toast({ title, description, variant });
+    toast({ title, description, variant, duration: variant === 'destructive' ? 5000 : 3000 });
   }, [toast]);
 
   // Mock Data Population
   const addMockItems = useCallback(async (userId: string) => {
+    if (!db) return;
     try {
       const itemsCollectionRef = collection(db, `users/${userId}/sportLifeItems`);
       const mockItems = [
@@ -102,7 +105,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
       ];
       const batch = writeBatch(db);
       mockItems.forEach(item => {
-        const docRef = doc(itemsCollectionRef);
+        const docRef = doc(itemsCollectionRef); // Auto-generate ID
         batch.set(docRef, item);
       });
       await batch.commit();
@@ -110,9 +113,10 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
     } catch (e) {
       console.error("Error adding mock items: ", e);
     }
-  }, []);
+  }, [db]);
 
   const addMockCustomers = useCallback(async (userId: string) => {
+     if (!db) return;
     try {
       const customersCollectionRef = collection(db, `users/${userId}/sportLifeCustomers`);
       const mockCustomers = [
@@ -122,7 +126,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
       ];
       const batch = writeBatch(db);
       mockCustomers.forEach(customer => {
-        const docRef = doc(customersCollectionRef);
+        const docRef = doc(customersCollectionRef); // Auto-generate ID
         batch.set(docRef, customer);
       });
       await batch.commit();
@@ -130,7 +134,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
     } catch (e) {
       console.error("Error adding mock customers: ", e);
     }
-  }, []);
+  }, [db]);
 
 
   // Fetch Items, Customers, and POs
@@ -143,11 +147,15 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
     const userId = currentUser.uid;
 
     const itemsColRef = collection(db, `users/${userId}/sportLifeItems`);
-    const unsubscribeItems = onSnapshot(itemsColRef, async (snapshot) => {
+    const itemsQuery = query(itemsColRef, where("_deleted", "!=", true)); // Filter out soft-deleted items
+    const unsubscribeItems = onSnapshot(itemsQuery, async (snapshot) => {
       const itemsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SportLifeItemDef));
       setItems(itemsData);
-      if (snapshot.docs.length === 0) await addMockItems(userId);
-    }, error => console.error("Error fetching items:", error));
+      if (snapshot.docs.length === 0 && itemsData.every(item => item._deleted)) { // Check if only deleted items or empty
+         const checkSnap = await getDocs(itemsColRef); // Check if the collection is truly empty
+         if(checkSnap.empty) await addMockItems(userId);
+      }
+    }, error => { console.error("Error fetching items:", error); showAppToast("Error", "Failed to load items.", "destructive");});
 
     const customersColRef = collection(db, `users/${userId}/sportLifeCustomers`);
     const unsubscribeCustomers = onSnapshot(customersColRef, async (snapshot) => {
@@ -161,21 +169,22 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
             // setSelectedCustomerId(journeyCustomer.id); // Optionally auto-select Journey
         }
       }
-    }, error => console.error("Error fetching customers:", error));
+    }, error => { console.error("Error fetching customers:", error); showAppToast("Error", "Failed to load customers.", "destructive");});
 
     const poColRef = collection(db, `users/${userId}/sportLifePurchaseOrders`);
-    const unsubscribePOs = onSnapshot(poColRef, (snapshot) => {
+    const poQuery = query(poColRef, where("_deleted", "!=", true)); // Filter out soft-deleted POs
+    const unsubscribePOs = onSnapshot(poQuery, (snapshot) => {
       const poData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PurchaseOrderDef));
       setPurchaseOrders(poData.sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()));
-    }, error => console.error("Error fetching purchase orders:", error));
+    }, error => { console.error("Error fetching purchase orders:", error); showAppToast("Error", "Failed to load saved orders.", "destructive");});
 
-    setIsLoadingData(false);
+    setIsLoadingData(false); // Set loading to false after subscriptions are set up
     return () => {
       unsubscribeItems();
       unsubscribeCustomers();
       unsubscribePOs();
     };
-  }, [currentUser, db, addMockItems, addMockCustomers, selectedCustomerId]);
+  }, [currentUser, db, addMockItems, addMockCustomers, selectedCustomerId, showAppToast]);
 
 
   // Helper Functions
@@ -201,7 +210,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
 
     purchaseOrders.filter(po => po.status === 'saved').forEach(po => {
       po.items.forEach(item => {
-        const key = item.itemId; // Assume itemId is unique enough or use name + cost
+        const key = item.itemId; 
         if (compiledItemsMap[key]) {
           compiledItemsMap[key].quantity += item.quantity;
         } else {
@@ -255,7 +264,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
       await setDoc(doc(db, `users/${currentUser.uid}/sportLifeItems`, editedItemData.id), {
         name: editedItemData.name,
         wholesaleCost: editedItemData.wholesaleCost
-      }); // Use setDoc with merge:true if only updating, or pass full object
+      }, { merge: true }); 
       showAppToast("Success", "Item updated successfully!");
       setShowAddItemModal(false);
       setItemToEdit(null);
@@ -269,9 +278,8 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
     if (!db || !currentUser) return showAppToast("Error", "Database not ready.", "destructive");
     if (!window.confirm("Are you sure you want to delete this item? This cannot be undone.")) return;
     try {
-      await updateDoc(doc(db, `users/${currentUser.uid}/sportLifeItems`, itemId), { _deleted: true }); // Soft delete
-      // Or: await deleteDoc(doc(db, `users/${currentUser.uid}/sportLifeItems`, itemId)); for hard delete
-      showAppToast("Success", "Item deleted successfully!");
+      await updateDoc(doc(db, `users/${currentUser.uid}/sportLifeItems`, itemId), { _deleted: true }); 
+      showAppToast("Success", "Item marked as deleted successfully!");
     } catch (e) {
       console.error("Error deleting item: ", e);
       showAppToast("Error", "Failed to delete item.", "destructive");
@@ -320,10 +328,9 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
 
     try {
       if (editingPoId) {
-        await setDoc(doc(db, `users/${currentUser.uid}/sportLifePurchaseOrders`, editingPoId), poData);
+        await setDoc(doc(db, `users/${currentUser.uid}/sportLifePurchaseOrders`, editingPoId), poData, { merge: true });
         showAppToast("Success", "Order updated successfully!");
       } else {
-        // Check for existing saved order for this customer to consolidate
         const q = query(collection(db, `users/${currentUser.uid}/sportLifePurchaseOrders`),
                         where("customerId", "==", selectedCustomerId),
                         where("status", "==", "saved"));
@@ -382,7 +389,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
     if (!db || !currentUser) return showAppToast("Error", "Database not ready.", "destructive");
     if (!window.confirm("Are you sure you want to delete this saved order? This cannot be undone.")) return;
     try {
-      await updateDoc(doc(db, `users/${currentUser.uid}/sportLifePurchaseOrders`, poId), { status: 'deleted', _deleted: true }); // Soft delete
+      await updateDoc(doc(db, `users/${currentUser.uid}/sportLifePurchaseOrders`, poId), { status: 'deleted', _deleted: true });
       showAppToast("Success", "Saved order deleted.");
     } catch (e) {
       console.error("Error deleting saved order: ", e);
@@ -434,7 +441,6 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
       });
       await batch.commit();
 
-      // Conceptually, this is where you'd send `finalPoDraft` to SportLife.
       console.log("Final Compiled PO Submitted to SportLife (STUB):", finalPoDraft);
       showAppToast("Success", "Purchase Order compiled and all included orders marked as 'submitted'!");
       setFinalPoDraft(null);
@@ -445,8 +451,10 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
         setIsSubmitting(false);
     }
   };
-
-  if (loadingAuth || isLoadingData) {
+  
+  // LoadingAuth is now always false from AppContext
+  // if (loadingAuth || isLoadingData) { ... }
+  if (isLoadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-sky-600" />
@@ -455,23 +463,19 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
     );
   }
 
+  // Login prompt is removed as currentUser is always the mock user
+  /*
   if (!currentUser) {
     return (
       <Card className="m-4 sm:m-8 lg:m-12">
         <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
         <CardContent className="text-center space-y-4">
-          <p className="text-slate-600 mb-4">Please log in to use the SportLife PO Creator.</p>
-          <Alert variant="default" className="text-left bg-sky-50 border-sky-200">
-            <Info className="h-5 w-5 text-sky-600" />
-            <AlertTitle className="text-sky-700">Developer Login</AlertTitle>
-            <AlertDescription className="text-sky-600">
-              For development, use the <code>devLogin('email', 'password')</code> function available in the browser console.
-            </AlertDescription>
-          </Alert>
+            <p className="text-slate-600 mb-4">Please log in to use the SportLife PO Creator.</p>
         </CardContent>
       </Card>
     );
   }
+  */
 
   // Add/Edit Item Form Component
   const AddEditItemForm = ({ item, onSubmit }: { item: SportLifeItemDef | null, onSubmit: (data: any) => void }) => {
@@ -486,7 +490,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
         return;
       }
       onSubmit({ ...(item || {}), name, wholesaleCost: cost });
-      if (!item) { setName(''); setWholesaleCost(''); } // Clear if new item
+      if (!item) { setName(''); setWholesaleCost(''); } 
     };
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -536,6 +540,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
             <ShoppingCart className="text-indigo-600 w-8 h-8" /> SportLife PO Creator
           </CardTitle>
           <CardDescription className="text-lg text-slate-500 pt-1">Create, manage, and submit Purchase Orders to SportLife Nutrition.</CardDescription>
+          {currentUser && <p className="text-xs text-slate-400 pt-1">User: {currentUser.displayName || currentUser.email}</p>}
         </CardHeader>
       </Card>
 
@@ -608,7 +613,7 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
             </div>
           </Card>
           <div className="flex justify-end">
-            <Button onClick={handleSaveOrder} size="lg" variant="default" disabled={Object.values(currentOrderQuantities).every(qty => qty === 0)}>
+            <Button onClick={handleSaveOrder} size="lg" variant="default" disabled={Object.values(currentOrderQuantities).every(qty => qty === 0) || !selectedCustomerId}>
               <Save className="mr-2 h-5 w-5" /> {editingPoId ? 'Update This Order' : 'Save This Order'}
             </Button>
           </div>
@@ -759,5 +764,3 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default SportLifePoCreatorPage;
-
-    
