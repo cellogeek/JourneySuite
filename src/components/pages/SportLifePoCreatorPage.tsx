@@ -446,7 +446,21 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
           {isEditingItems && <Button onClick={() => { setItemToEdit(null); setShowAddItemModal(true); }} variant="default" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add New Item to Catalog</Button>}
           <Card className="bg-slate-50/50 p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-              <div><Label htmlFor="customerSelectPoForm">Select Customer</Label><div className="flex gap-2"><Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}><SelectTrigger id="customerSelectPoForm" className="flex-grow"><SelectValue placeholder="Select customer" /></SelectTrigger><SelectContent><SelectItem value="">Select customer</SelectItem>{customers.map(customer => <SelectItem key={customer.id} value={customer.id}>{customer.firstName} {customer.lastName}</SelectItem>)}</SelectContent></Select><Button variant="outline" size="icon" onClick={() => setShowAddCustomerModal(true)} aria-label="Add customer"><UserPlus className="h-4 w-4"/></Button></div></div>
+              <div><Label htmlFor="customerSelectPoForm">Select Customer</Label><div className="flex gap-2">
+                <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                  <SelectTrigger id="customerSelectPoForm" className="flex-grow">
+                    <SelectValue placeholder="Select customer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* <SelectItem value="">Select customer</SelectItem> <- Removed this line */}
+                    {customers.map(customer => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.firstName} {customer.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="icon" onClick={() => setShowAddCustomerModal(true)} aria-label="Add customer"><UserPlus className="h-4 w-4"/></Button></div></div>
               <div className="text-right"><p className="text-md font-semibold text-slate-700">Subtotal: <span className="text-lg text-slate-900">${calculateCurrentOrderTotal().toFixed(2)}</span></p></div>
             </div>
           </Card>
@@ -571,4 +585,3 @@ const SportLifePoCreatorPage = ({ pageId }: { pageId: string }) => {
 
 export default SportLifePoCreatorPage;
 
-    
