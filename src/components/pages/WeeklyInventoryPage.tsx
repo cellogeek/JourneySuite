@@ -64,7 +64,7 @@ interface AddItemModalProps {
 
 const AddItemModal: React.FC<AddItemModalProps> = ({ inventory, onClose, onAddItem }) => {
   const [itemName, setItemName] = useState('');
-  const [sublocation, setSublocation] = useState('foh');
+  const [sublocation, setSublocation] = useState<keyof InventoryState>('foh');
   const [unit, setUnit] = useState('lbs');
   const [wholeQuantity, setWholeQuantity] = useState(0);
   const [partialQuantity, setPartialQuantity] = useState(0);
@@ -139,7 +139,7 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ inventory, onClose, onAddIt
           </div>
           <div>
             <Label htmlFor="addSublocation">Sublocation:</Label>
-            <Select value={sublocation} onValueChange={setSublocation}>
+            <Select value={sublocation} onValueChange={(value) => setSublocation(value as keyof InventoryState)}>
               <SelectTrigger id="addSublocation"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="foh">Front of House (FOH)</SelectItem>
@@ -158,23 +158,23 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ inventory, onClose, onAddIt
             </Select>
           </div>
           <div className="flex items-center space-x-2">
-            <Label htmlFor="addWholeQuantity" className="flex-shrink-0">Whole Qty:</Label>
+            <Label htmlFor="addWholeQuantity" className="flex-shrink-0 whitespace-nowrap">Whole Qty:</Label>
             <div className="flex items-center border border-input rounded-md overflow-hidden flex-grow">
-              <Button variant="outline" size="icon" onClick={() => handleWholeAdjustment(-1)} aria-label="Decrease whole quantity" className="rounded-r-none h-10 w-10"> <Minus className="h-4 w-4"/> </Button>
+              <Button variant="outline" size="icon" onClick={() => handleWholeAdjustment(-1)} aria-label="Decrease whole quantity" className="rounded-r-none h-10 w-10 flex-shrink-0"> <Minus className="h-4 w-4"/> </Button>
               <Input
                 type="number"
                 id="addWholeQuantity"
                 value={wholeQuantity === 0 ? '' : wholeQuantity}
                 onChange={handleWholeChange}
-                className="w-full text-center h-10 rounded-none border-y-0"
+                className="w-full text-center h-10 rounded-none border-y-0 px-1"
                 min="0"
                 aria-label="Current whole quantity"
               />
-              <Button variant="outline" size="icon" onClick={() => handleWholeAdjustment(1)} aria-label="Increase whole quantity" className="rounded-l-none h-10 w-10"> <Plus className="h-4 w-4"/> </Button>
+              <Button variant="outline" size="icon" onClick={() => handleWholeAdjustment(1)} aria-label="Increase whole quantity" className="rounded-l-none h-10 w-10 flex-shrink-0"> <Plus className="h-4 w-4"/> </Button>
             </div>
           </div>
           <div>
-            <Label htmlFor="addPartialQuantity-slider">Partial Qty: ({partialQuantity}%)</Label>
+            <Label htmlFor="addPartialQuantity-slider" className="block text-center sm:text-left mb-1">Partial Qty: ({partialQuantity}%)</Label>
             <Slider
               id="addPartialQuantity-slider"
               min={0} max={100} step={10}
@@ -184,12 +184,12 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ inventory, onClose, onAddIt
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <DialogFooter className="flex-col sm:flex-row sm:justify-end sm:space-x-2 pt-4">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto mb-2 sm:mb-0">Cancel</Button>
           {duplicateWarning ? (
-            <Button onClick={() => handleSubmit(true)} variant="destructive">Add Anyway</Button>
+            <Button onClick={() => handleSubmit(true)} variant="destructive" className="w-full sm:w-auto">Add Anyway</Button>
           ) : (
-            <Button onClick={() => handleSubmit()}>Add Item</Button>
+            <Button onClick={() => handleSubmit()} className="w-full sm:w-auto">Add Item</Button>
           )}
         </DialogFooter>
       </DialogContent>
@@ -294,22 +294,22 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ item, sublocationKey, ite
             </Select>
           </div>
           <div className="flex items-center space-x-2">
-            <Label className="flex-shrink-0">Whole Qty:</Label>
+            <Label className="flex-shrink-0 whitespace-nowrap">Whole Qty:</Label>
              <div className="flex items-center border border-input rounded-md overflow-hidden flex-grow">
-                <Button variant="outline" size="icon" onClick={() => setCurrentWholeQuantity(prev => Math.max(0, prev - 1))} aria-label="Decrease whole quantity" className="rounded-r-none h-10 w-10"> <Minus className="h-4 w-4"/> </Button>
+                <Button variant="outline" size="icon" onClick={() => setCurrentWholeQuantity(prev => Math.max(0, prev - 1))} aria-label="Decrease whole quantity" className="rounded-r-none h-10 w-10 flex-shrink-0"> <Minus className="h-4 w-4"/> </Button>
                 <Input
                     type="number"
                     value={currentWholeQuantity === 0 ? '' : currentWholeQuantity}
                     onChange={(e) => { const val = parseInt(e.target.value, 10); setCurrentWholeQuantity(isNaN(val) || val < 0 ? 0 : val); }}
-                    className="w-full text-center h-10 rounded-none border-y-0"
+                    className="w-full text-center h-10 rounded-none border-y-0 px-1"
                     min="0"
                     aria-label="Current whole quantity"
                 />
-                <Button variant="outline" size="icon" onClick={() => setCurrentWholeQuantity(prev => prev + 1)} aria-label="Increase whole quantity" className="rounded-l-none h-10 w-10"> <Plus className="h-4 w-4"/> </Button>
+                <Button variant="outline" size="icon" onClick={() => setCurrentWholeQuantity(prev => prev + 1)} aria-label="Increase whole quantity" className="rounded-l-none h-10 w-10 flex-shrink-0"> <Plus className="h-4 w-4"/> </Button>
             </div>
           </div>
           <div>
-            <Label htmlFor="editPartialQuantity-slider">Partial Qty: ({currentPartialQuantity}%)</Label>
+            <Label htmlFor="editPartialQuantity-slider" className="block text-center sm:text-left mb-1">Partial Qty: ({currentPartialQuantity}%)</Label>
             <Slider
               id="editPartialQuantity-slider"
               min={0} max={100} step={10}
@@ -336,9 +336,9 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ item, sublocationKey, ite
             </div>
           )}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit}><Save className="mr-2 h-4 w-4" />Save Changes</Button>
+        <DialogFooter className="flex-col sm:flex-row sm:justify-end sm:space-x-2 pt-4">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto mb-2 sm:mb-0">Cancel</Button>
+          <Button onClick={handleSubmit} className="w-full sm:w-auto"><Save className="mr-2 h-4 w-4" />Save Changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -512,30 +512,29 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ inventory, onClose, onS
               onTouchEnd={handleTouchEnd}
               onTouchCancel={handleTouchEnd}
               className={cn(
-                "relative p-3 bg-slate-50 border border-slate-200 rounded-lg mb-2 flex items-center justify-between shadow-sm cursor-grab transition-all duration-200 ease-in-out",
+                "relative p-3 bg-slate-50 border border-slate-200 rounded-lg mb-2 flex items-center justify-between shadow-sm cursor-grab transition-all duration-200 ease-in-out text-sm sm:text-base",
                 draggedItemIndex === index && "opacity-50 border-sky-500 ring-2 ring-sky-500",
                 draggedItemIndex !== null && currentHoverIndex === index && draggedItemIndex !== index && !isDraggingTouch && "bg-sky-100",
                 isDraggingTouch && draggedItemIndex === index && "absolute z-50 shadow-lg border-purple-500 bg-white"
               )}
               style={{
-                touchAction: 'none', // Important for preventing default scroll on touch devices
+                touchAction: 'none', 
                 ...(isDraggingTouch && draggedItemIndex === index && {
-                    // Position is handled by transform
                     width: itemRefs.current[draggedItemIndex]?.offsetWidth ? `${itemRefs.current[draggedItemIndex]?.offsetWidth}px` : 'auto',
-                    pointerEvents: 'none' as 'none', // Disable pointer events on the original item while dragging its clone
+                    pointerEvents: 'none' as 'none', 
                 })
               }}
             >
-              <span className="text-sm text-slate-700 font-medium">
+              <span className="text-slate-700 font-medium">
                 {item.name} ({item.unit}) - <span className="font-semibold text-sky-600">{item.sublocationKey.toUpperCase()}</span>
               </span>
               <GripVertical className="w-5 h-5 text-slate-400 cursor-grab" />
             </div>
           ))}
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}><Save className="mr-2 h-4 w-4" />Save Order</Button>
+        <DialogFooter className="flex-col sm:flex-row sm:justify-end sm:space-x-2 pt-4">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto mb-2 sm:mb-0">Cancel</Button>
+          <Button onClick={handleSave} className="w-full sm:w-auto"><Save className="mr-2 h-4 w-4" />Save Order</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -549,13 +548,13 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ vendors }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center"><Users className="mr-2 h-5 w-5 text-sky-600"/>All Vendors</CardTitle>
+        <CardTitle className="flex items-center text-lg sm:text-xl"><Users className="mr-2 h-5 w-5 text-sky-600"/>All Vendors</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="list-disc list-inside space-y-2 pl-5">
           {vendors.length > 0 ? (
             vendors.map((vendor, index) => (
-              <li key={index} className="text-slate-700">
+              <li key={index} className="text-slate-700 text-sm sm:text-base">
                 {vendor}
               </li>
             ))
@@ -641,7 +640,6 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
   const [activeView, setActiveView] = useState<'inventory' | 'vendors'>('inventory');
   const [isEditMode, setIsEditMode] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
-  // Firebase related comments from original code are preserved but not active for this stub.
 
   useEffect(() => {
     const handleScroll = () => setShowScrollToTop(window.scrollY > 300);
@@ -668,7 +666,7 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
 
   const handleUpdateItem = (updatedItemData: { originalSublocationKey: keyof InventoryState; originalItemKey: string; newSublocationKey: keyof InventoryState; newItemName: string; unit: string; whole: number; partial: number; vendor: string }) => {
     setInventory(prevInventory => {
-      const newInventory = JSON.parse(JSON.stringify(prevInventory)); // Deep copy
+      const newInventory = JSON.parse(JSON.stringify(prevInventory)); 
       const { originalSublocationKey, originalItemKey, newSublocationKey, newItemName, unit, whole, partial, vendor } = updatedItemData;
       const newItemKey = convertNameToKey(newItemName);
 
@@ -716,26 +714,26 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
   const renderInventoryItem = (sublocationKey: keyof InventoryState, itemKey: string, itemData: InventoryItemData) => (
     <Card key={`${sublocationKey}-${itemKey}`} className="mb-3 sm:mb-4">
       <CardContent className="p-3 sm:p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-            <div className="flex-1 mb-3 sm:mb-0">
-                <h4 className="font-semibold text-slate-800 text-md">{formatItemName(itemKey)} ({itemData.unit})</h4>
-                <p className="text-slate-600 text-xs">Vendor: {itemData.vendor || 'N/A'}</p>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-slate-800 text-sm sm:text-md truncate">{formatItemName(itemKey)} ({itemData.unit})</h4>
+                <p className="text-slate-600 text-xs truncate">Vendor: {itemData.vendor || 'N/A'}</p>
             </div>
-            <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
-                <div className="flex items-center border border-input rounded-md overflow-hidden w-full sm:w-auto">
-                    <Button variant="outline" size="icon" onClick={() => handleItemWholeAdjustment(sublocationKey, itemKey, -1)} aria-label={`Decrease ${formatItemName(itemKey)} whole quantity`} className="rounded-r-none h-10 w-10"> <Minus className="h-4 w-4"/> </Button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                <div className="flex items-center border border-input rounded-md overflow-hidden w-full sm:w-auto flex-grow sm:flex-grow-0">
+                    <Button variant="outline" size="icon" onClick={() => handleItemWholeAdjustment(sublocationKey, itemKey, -1)} aria-label={`Decrease ${formatItemName(itemKey)} whole quantity`} className="rounded-r-none h-10 w-10 flex-shrink-0"> <Minus className="h-4 w-4"/> </Button>
                     <Input
                         type="number"
                         value={itemData.whole === 0 ? '' : itemData.whole}
                         onChange={(e) => handleItemWholeChange(sublocationKey, itemKey, e)}
-                        className="w-full sm:w-16 text-center h-10 rounded-none border-y-0"
+                        className="w-full min-w-[3rem] sm:w-16 text-center h-10 rounded-none border-y-0 px-1"
                         min="0"
                         aria-label={`Current ${formatItemName(itemKey)} whole quantity`}
                     />
-                    <Button variant="outline" size="icon" onClick={() => handleItemWholeAdjustment(sublocationKey, itemKey, 1)} aria-label={`Increase ${formatItemName(itemKey)} whole quantity`} className="rounded-l-none h-10 w-10"> <Plus className="h-4 w-4"/> </Button>
+                    <Button variant="outline" size="icon" onClick={() => handleItemWholeAdjustment(sublocationKey, itemKey, 1)} aria-label={`Increase ${formatItemName(itemKey)} whole quantity`} className="rounded-l-none h-10 w-10 flex-shrink-0"> <Plus className="h-4 w-4"/> </Button>
                 </div>
                 <div className="flex flex-col items-center w-full sm:w-40">
-                    <Label htmlFor={`${itemKey}-partial-slider`} className="text-xs font-medium text-slate-600 mb-1">Partial: ({itemData.partial}%)</Label>
+                    <Label htmlFor={`${itemKey}-partial-slider`} className="text-xs font-medium text-slate-600 mb-1 text-center sm:text-left">Partial: ({itemData.partial}%)</Label>
                     <Slider
                         id={`${itemKey}-partial-slider`}
                         min={0} max={100} step={10}
@@ -750,9 +748,9 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
                         size="sm"
                         onClick={() => { setItemToEdit({ sublocationKey, itemKey, itemData }); setShowEditItemModal(true); }}
                         aria-label={`Edit ${formatItemName(itemKey)}`}
-                        className="mt-2 sm:mt-0 sm:ml-2"
+                        className="mt-2 sm:mt-0 sm:ml-2 w-full sm:w-auto flex-shrink-0 py-2"
                     >
-                        <FilePenLine className="h-4 w-4" />
+                        <FilePenLine className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">Edit</span>
                     </Button>
                 )}
             </div>
@@ -762,20 +760,21 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-slate-50 p-2 sm:p-6 lg:p-8 flex flex-col items-center">
       <Card className="w-full max-w-5xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900">Weekly Inventory Count</CardTitle>
-          <CardDescription className="text-lg text-slate-500 pt-1">Journey Canyon LLC - Canyon Location</CardDescription>
+        <CardHeader className="text-center px-2 sm:px-6">
+          <CardTitle className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-slate-900">Weekly Inventory Count</CardTitle>
+          <CardDescription className="text-md sm:text-lg text-slate-500 pt-1">Journey Canyon LLC - Canyon Location</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex justify-center mb-6 sm:mb-8 space-x-2 sm:space-x-4">
+        <CardContent className="px-2 sm:px-6">
+          <div className="flex flex-wrap gap-2 sm:gap-4 justify-center mb-6 sm:mb-8">
             {(['inventory', 'vendors'] as const).map(view => (
               <Button
                 key={view}
                 onClick={() => setActiveView(view)}
                 variant={activeView === view ? 'default' : 'outline'}
-                size="lg"
+                size="default" 
+                className="text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto flex-grow sm:flex-grow-0"
               >
                 {view === 'inventory' ? 'Inventory Count' : 'Vendor Management'}
               </Button>
@@ -784,36 +783,36 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
 
           {activeView === 'inventory' ? (
             <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as keyof InventoryState)} className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8">
-                <TabsTrigger value="foh">Front of House</TabsTrigger>
-                <TabsTrigger value="boh">Back of House</TabsTrigger>
-                <TabsTrigger value="container">Container</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8 h-auto">
+                <TabsTrigger value="foh" className="px-1 text-xs sm:text-sm py-1.5 sm:py-2.5">FOH</TabsTrigger>
+                <TabsTrigger value="boh" className="px-1 text-xs sm:text-sm py-1.5 sm:py-2.5">BOH</TabsTrigger>
+                <TabsTrigger value="container" className="px-1 text-xs sm:text-sm py-1.5 sm:py-2.5">Container</TabsTrigger>
               </TabsList>
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mb-4 sm:mb-6">
-                <Button onClick={() => setShowAddItemModal(true)} variant="default" size="action">
-                  <Plus className="mr-2 h-5 w-5"/>Add Item
+              <div className="flex flex-col sm:flex-row justify-end items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <Button onClick={() => setShowAddItemModal(true)} variant="default" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Plus className="mr-1 sm:mr-2 h-4 w-4"/>Add Item
                 </Button>
-                <Button onClick={() => setShowEditOrderModal(true)} variant="outline" size="action">
-                  <Edit className="mr-2 h-5 w-5"/>Edit Display Order
+                <Button onClick={() => setShowEditOrderModal(true)} variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                  <Edit className="mr-1 sm:mr-2 h-4 w-4"/>Edit Order
                 </Button>
                 <Button
                   onClick={() => setIsEditMode(prev => !prev)}
                   variant={isEditMode ? 'destructive' : 'secondary'}
-                  size="action"
+                  size="sm" className="w-full sm:w-auto text-xs sm:text-sm"
                 >
-                  {isEditMode ? 'Exit Edit Mode' : <><FilePenLine className="mr-2 h-5 w-5"/>Toggle Item Edit</>}
+                  {isEditMode ? 'Exit Edit' : <><FilePenLine className="mr-1 sm:mr-2 h-4 w-4"/>Toggle Edit</>}
                 </Button>
               </div>
 
               {(['foh', 'boh', 'container'] as const).map(subKey => (
                 <TabsContent key={subKey} value={subKey}>
                   <Card className="bg-slate-100/50">
-                    <CardHeader>
-                      <CardTitle className="text-xl font-semibold text-slate-700">
+                    <CardHeader className="p-3 sm:p-4">
+                      <CardTitle className="text-lg sm:text-xl font-semibold text-slate-700">
                         {subKey === 'foh' ? 'Front of House (FOH)' : subKey === 'boh' ? 'Back of House (BOH)' : 'Container'}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-2 sm:p-4">
                       {Object.keys(inventory[subKey] || {}).length > 0 ? (
                         Object.keys(inventory[subKey]).map(itemKey =>
                           renderInventoryItem(subKey, itemKey, inventory[subKey][itemKey])
@@ -841,10 +840,10 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
           onClick={scrollToTop}
           variant="default"
           size="icon"
-          className="fixed bottom-6 right-6 rounded-full h-12 w-12 shadow-lg z-40"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 rounded-full h-10 w-10 sm:h-12 sm:w-12 shadow-lg z-40"
           aria-label="Scroll to top"
         >
-          <ArrowUp className="h-6 w-6" />
+          <ArrowUp className="h-5 w-5 sm:h-6 sm:w-6" />
         </Button>
       )}
     </div>
@@ -853,5 +852,3 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
 
 export default WeeklyInventoryPage;
 
-
-    
