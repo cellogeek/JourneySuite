@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Printer, Mail, User, Home, MapPin, Building, Globe } from 'lucide-react';
+import { Printer, Mail, User, Home, MapPin, Building, Globe, Sparkles, Loader2 } from 'lucide-react';
+import { suggestAddress, type SuggestAddressInput, type SuggestAddressOutput } from '@/ai/flows/suggest-address-flow';
 
 interface Address {
   name: string;
@@ -35,7 +36,11 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   const [showStandardPreview, setShowStandardPreview] = useState(false);
   const [showNameOnlyPreview, setShowNameOnlyPreview] = useState(false);
   
-  const [isPdfLibReady, setIsPdfLibReady] = useState(false); 
+  const [isPdfLibReady, setIsPdfLibReady] = useState(false); // Kept for CheckWriter or other potential PDF uses
+
+  const [isSuggestingAddress, setIsSuggestingAddress] = useState(false);
+  const [suggestionError, setSuggestionError] = useState('');
+
 
   useEffect(() => {
     if ((window as any).jspdf) {
@@ -66,6 +71,16 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     setShowNameOnlyPreview(false); 
   }
 
+  const escapeHtml = (unsafe: string) => {
+    if (typeof unsafe !== 'string') return '';
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+  }
+
   const generateStandardEnvelope = () => {
      if (!recipientAddress.name && !recipientAddress.street && !recipientAddress.city && !recipientAddress.state && !recipientAddress.zip) {
         alert("Please enter complete recipient information.");
@@ -79,9 +94,13 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '<style>';
       htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }';
       htmlContent += 'body { width: 9.5in; height: 4.125in; margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; font-size: 10pt; position: relative; overflow: hidden; }';
+      
       htmlContent += '.return-address { position: absolute; top: 0.5in; left: 0.5in; line-height: 1.4; font-size: 9pt; }';
-      htmlContent += '.stamp-area { position: absolute; top: 0.5in; right: 0.5in; width: 1.2in; text-align: center; line-height: 1.2; font-size: 8pt; color: #888; }';
+      
+      htmlContent += '.stamp-area { position: absolute; top: 0.5in; right: 0.5in; width: 1.2in; text-align: center; line-height: 1.2; font-size: 8pt; color: #333; }';
+      
       htmlContent += '.recipient-address { position: absolute; top: 1.9in; left: 4.75in; transform: translateX(-50%); text-align: center; line-height: 1.5; font-size: 11pt; max-width: 4in; }';
+      
       htmlContent += '.address-line { margin-bottom: 0.05in; }';
       htmlContent += '</style></head><body>';
       
@@ -117,8 +136,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      alert("Attempting to print envelope.");
-
     } else {
       alert("Could not open print window. Please check your browser's pop-up settings.");
     }
@@ -157,21 +174,35 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     }
   };
 
-  const escapeHtml = (unsafe: string) => {
-    if (typeof unsafe !== 'string') return '';
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
-  }
-
-
   const isRecipientAddressFilled = () => {
     return recipientAddress.name.trim() !== '' || 
            recipientAddress.street.trim() !== '' ||
            (recipientAddress.city.trim() !== '' && recipientAddress.state.trim() !== '' && recipientAddress.zip.trim() !== '');
+  };
+
+  const handleSuggestAddress = async () => {
+    if (!recipientAddress.name.trim()) {
+      setSuggestionError("Please enter a recipient name first.");
+      return;
+    }
+    setIsSuggestingAddress(true);
+    setSuggestionError('');
+    try {
+      const suggestion = await suggestAddress({ query: recipientAddress.name });
+      setRecipientAddress({
+        name: suggestion.name,
+        street: suggestion.street,
+        city: suggestion.city,
+        state: suggestion.state,
+        zip: suggestion.zip,
+      });
+      setShowStandardPreview(false); 
+    } catch (error: any) {
+      console.error("Error suggesting address:", error);
+      setSuggestionError(error.message || "Failed to suggest address.");
+    } finally {
+      setIsSuggestingAddress(false);
+    }
   };
 
   return (
@@ -232,6 +263,26 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     <Label htmlFor="recipientName" className="flex items-center gap-1 text-sm"><User size={14}/>Name/Company</Label>
                     <Input id="recipientName" value={recipientAddress.name} onChange={e => handleAddressChange('recipient', 'name', e.target.value)} placeholder="Recipient Name/Company" />
                   </div>
+                  <div className="md:col-span-2">
+                    <Button 
+                      type="button"
+                      onClick={handleSuggestAddress} 
+                      variant="outline" 
+                      size="sm" 
+                      className="mt-1 w-full"
+                      disabled={isSuggestingAddress || !recipientAddress.name.trim()}
+                    >
+                      {isSuggestingAddress ? (
+                        <Loader2 size={16} className="mr-2 animate-spin" />
+                      ) : (
+                        <Sparkles size={16} className="mr-2" />
+                      )}
+                      Suggest Address
+                    </Button>
+                    {suggestionError && (
+                      <p className="text-xs text-red-500 mt-1">{suggestionError}</p>
+                    )}
+                  </div>
                   <div>
                     <Label htmlFor="recipientStreet" className="flex items-center gap-1 text-sm"><Home size={14}/>Street</Label>
                     <Input id="recipientStreet" value={recipientAddress.street} onChange={e => handleAddressChange('recipient', 'street', e.target.value)} placeholder="456 Recipient Ave" />
@@ -268,22 +319,21 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     className="relative w-full bg-white border border-slate-400 shadow-md mx-auto max-w-2xl text-[10px]" 
                     style={{ aspectRatio: '9.5 / 4.125', fontFamily: "'Helvetica', Arial, sans-serif" }}
                   >
-                    {/* Return Address Preview */}
                     <div className="absolute text-[9pt] leading-tight" style={{ top: '0.5in', left: '0.5in', transform: 'scale(0.104)', transformOrigin: 'top left' }}>
                       <div>{returnAddress.name}</div>
                       <div>{returnAddress.street}</div>
                       <div>{`${returnAddress.city}${returnAddress.city ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`}</div>
                     </div>
                     
-                    {/* Stamp Preview Text (Center-aligned) */}
                     <div 
                         className="absolute text-center leading-tight text-slate-400 text-[8pt]" 
                         style={{ 
                             top: '0.5in', 
                             right: '0.5in',
                             width: '1.2in', 
-                            transform: 'scale(0.104)', 
-                            transformOrigin: 'top right',
+                            transform: 'scale(0.104) translateX(50%)', // Adjust for centering
+                            right: 'calc(0.5in + 0.6in)', // 0.5in margin + half of 1.2in width
+                            textAlign: 'center',
                         }}
                     >
                         <div>PLACE</div>
@@ -291,7 +341,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                         <div>HERE</div>
                     </div>
 
-                    {/* Recipient Address Preview */}
                     <div className="absolute text-center leading-normal text-[11pt]" style={{ top: '1.9in', left: '4.75in', transform: 'translateX(-50%) scale(0.104)', transformOrigin: 'top center', maxWidth: '4in' }}>
                         <div className="font-semibold">{recipientAddress.name}</div>
                         <div>{recipientAddress.street}</div>
@@ -315,11 +364,11 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                 <Label htmlFor="nameOnlyName" className="flex items-center gap-1 text-sm"><User size={14}/>Person's Name</Label>
                 <Input id="nameOnlyName" value={nameOnly} onChange={e => handleNameOnlyChange(e.target.value)} placeholder="e.g., John Doe" />
               </div>
-              <Button onClick={printNameOnlyEnvelope} size="action" className="w-full md:w-auto">
+              <Button onClick={printNameOnlyEnvelope} size="action" className="w-full md:w-auto" disabled={!nameOnly.trim()}>
                 <Printer size={18} className="mr-2"/> Print Name-Only Envelope
               </Button>
 
-              {showNameOnlyPreview && (
+              {showNameOnlyPreview && nameOnly.trim() && (
                  <div className="mt-6 p-4 border-2 border-dashed border-sky-300 rounded-lg bg-sky-50/50">
                   <h3 className="text-lg font-semibold text-sky-700 mb-3 text-center">Envelope Preview (Name-Only)</h3>
                   <div 
