@@ -35,12 +35,9 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   const [showStandardPreview, setShowStandardPreview] = useState(false);
   const [showNameOnlyPreview, setShowNameOnlyPreview] = useState(false);
   
-  const [isPdfLibReady, setIsPdfLibReady] = useState(false); // Kept for potential use by other components like CheckWriter
+  const [isPdfLibReady, setIsPdfLibReady] = useState(false); 
 
   useEffect(() => {
-    // This useEffect loads jsPDF. It's kept in case other components
-    // (like CheckWriterPage if navigated to) might benefit from it being preloaded.
-    // However, this page's standard envelope will no longer use it.
     if ((window as any).jspdf) {
         setIsPdfLibReady(true);
         return;
@@ -85,7 +82,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '.return-address { position: absolute; top: 0.5in; left: 0.5in; line-height: 1.4; font-size: 9pt; }';
       htmlContent += '.stamp-area { position: absolute; top: 0.5in; right: 0.5in; width: 1.2in; text-align: center; line-height: 1.2; font-size: 8pt; color: #888; }';
       htmlContent += '.recipient-address { position: absolute; top: 1.9in; left: 4.75in; transform: translateX(-50%); text-align: center; line-height: 1.5; font-size: 11pt; max-width: 4in; }';
-      htmlContent += '.postnet-barcode { position: absolute; bottom: 0.4in; left: 4.75in; transform: translateX(-50%); text-align: center; font-family: "Courier New", Courier, monospace; font-size: 12pt; letter-spacing: 0.1em; }';
       htmlContent += '.address-line { margin-bottom: 0.05in; }';
       htmlContent += '</style></head><body>';
       
@@ -109,11 +105,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       }
       htmlContent += '</div>';
       
-      const postnetValue = getPostnetBarcode(recipientAddress.zip);
-      if (postnetValue) {
-        htmlContent += '<div class="postnet-barcode">' + escapeHtml(postnetValue) + '</div>';
-      }
-
       htmlContent += '<script>';
       htmlContent += 'window.onload = function() {';
       htmlContent += '  window.print();';
@@ -126,7 +117,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      alert("Attempting to print envelope. Note: ZIP+4 lookup and scannable POSTNET barcode generation are not yet implemented. The barcode shown is a visual placeholder.");
+      alert("Attempting to print envelope.");
 
     } else {
       alert("Could not open print window. Please check your browser's pop-up settings.");
@@ -165,14 +156,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       alert("Could not open print window. Please check your browser's pop-up settings.");
     }
   };
-
-  const getPostnetBarcode = (zip: string) => {
-    const zipDigits = zip.replace(/[^0-9]/g, '');
-    if (zipDigits.length >= 5) {
-      return "| | | | |  | | | |  | | | |  | | | |  | | | |  | | | | |"; // Visual Placeholder
-    }
-    return "";
-  }
 
   const escapeHtml = (unsafe: string) => {
     if (typeof unsafe !== 'string') return '';
@@ -298,7 +281,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                         style={{ 
                             top: '0.5in', 
                             right: '0.5in',
-                            width: '1.2in', // Matching CSS
+                            width: '1.2in', 
                             transform: 'scale(0.104)', 
                             transformOrigin: 'top right',
                         }}
@@ -314,13 +297,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                         <div>{recipientAddress.street}</div>
                         <div>{`${recipientAddress.city}${recipientAddress.city ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`}</div>
                     </div>
-
-                    {/* POSTNET Barcode Preview */}
-                    {getPostnetBarcode(recipientAddress.zip) && (
-                        <div className="absolute text-center text-[12pt] tracking-[0.1em]" style={{ bottom: '0.4in', left: '4.75in', transform: 'translateX(-50%) scale(0.104)', transformOrigin: 'bottom center', fontFamily: "'Courier New', Courier, monospace" }}>
-                          {getPostnetBarcode(recipientAddress.zip)}
-                        </div>
-                    )}
                   </div>
                 </div>
               )}
