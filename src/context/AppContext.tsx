@@ -6,7 +6,8 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
-  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail
+  CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
+  ShoppingCart, ClipboardCheck // Added ClipboardCheck
 } from 'lucide-react';
 import { auth } from '@/lib/firebase'; // Import Firebase auth
 import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth'; // Import User type and auth functions
@@ -20,7 +21,8 @@ import SalesTaxRunnerPage from '@/components/pages/SalesTaxRunnerPage';
 import CheckWriterPage from '@/components/pages/CheckWriterPage';
 import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
 import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
-import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage'; // Import new page
+import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
+import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage'; // Import new page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -70,6 +72,7 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Operations & Inventory',
     items: [
       { id: 'inventory', name: 'Inventory', icon: Boxes, title: 'Inventory Management', component: InventoryPage },
+      { id: 'purchase_orders', name: 'Purchase Orders', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
       { id: 'vendors', name: 'Vendors', icon: Truck, title: 'Vendor Management', description: "Manage vendor contracts, orders, and relationships.", component: GenericPlaceholderPage },
       { id: 'special_orders', name: 'Special Orders', icon: ClipboardList, title: 'Special Orders Management', description: "Manage unique, recurring, and custom orders.", component: SpecialOrdersPage },
     ],
@@ -224,7 +227,3 @@ export const useAppContext = () => {
   }
   return context;
 };
-
-    
-
-    
