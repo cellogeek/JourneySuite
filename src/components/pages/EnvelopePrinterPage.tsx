@@ -134,60 +134,28 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       alert("Please enter a name.");
       return;
     }
-    setShowNameOnlyPreview(true); 
+    setShowNameOnlyPreview(true);
 
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(\`
-        <html>
-          <head>
-            <title>Print Envelope</title>
-            <style>
-              @page { 
-                size: 9.5in 4.125in; /* Standard #10 Envelope size (width x height for typical feed) */
-                margin: 0; 
-              }
-              body { 
-                margin: 0; 
-                padding: 0;
-                width: 9.5in; /* Match @page width */
-                height: 4.125in; /* Match @page height */
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                overflow: hidden;
-              }
-              .name-container {
-                font-family: 'Verdana', sans-serif;
-                font-weight: bold;
-                font-size: 1.6875rem; /* Approx 27px (18px * 1.5) */
-                text-align: center;
-                line-height: 1.2;
-                max-width: 90%; 
-                word-break: break-word;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="name-container">\${nameOnly.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
-            <script>
-              window.onload = function() {
-                window.print();
-                var printed = false;
-                window.onafterprint = function() {
-                  printed = true;
-                  window.close();
-                };
-                setTimeout(function() {
-                  if (!printed && !printWindow.closed) {
-                    printWindow.close();
-                  }
-                }, 2000); 
-              }
-            <\/script> 
-          </body>
-        </html>
-      \`);
+      let htmlContent = '<html><head><title>Print Envelope</title>';
+      htmlContent += '<style>';
+      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }';
+      htmlContent += 'body { margin: 0; padding: 0; width: 9.5in; height: 4.125in; display: flex; align-items: center; justify-content: center; overflow: hidden; }';
+      htmlContent += ".name-container { font-family: 'Verdana', sans-serif; font-weight: bold; font-size: 1.6875rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
+      htmlContent += '</style></head><body>';
+      htmlContent += '<div class="name-container">' + nameOnly.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</div>';
+      htmlContent += '<script>';
+      htmlContent += 'window.onload = function() {';
+      htmlContent += '  window.print();';
+      htmlContent += '  var printed = false;';
+      htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
+      htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
+      htmlContent += '};';
+      htmlContent += '<\/script>'; // Forward slash in closing script tag is escaped
+      htmlContent += '</body></html>';
+
+      printWindow.document.write(htmlContent);
       printWindow.document.close();
     } else {
       alert("Could not open print window. Please check your browser's pop-up settings.");
@@ -382,4 +350,3 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
 export default EnvelopePrinterPage;
 
     
-
