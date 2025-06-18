@@ -101,15 +101,22 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
         doc.text(`${recipientAddress.city}${recipientAddress.city && (recipientAddress.state || recipientAddress.zip) ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`, recipientX, recipientY += 0.20, {align: 'center'});
     }
 
-    // Stamp Placeholder (top-right)
-    const stampSize = 0.5; // conceptual size for text placement
-    const stampX = 9.5 - stampSize - 0.5; // 0.5in from right edge
-    const stampY = 0.5; // 0.5in from top edge
-    doc.setFontSize(8); // Smaller font for stamp text
-    doc.text('PLACE', stampX + stampSize / 2, stampY + stampSize / 2 - 0.05, { align: 'center' });
-    doc.text('STAMP', stampX + stampSize / 2, stampY + stampSize / 2 + 0.05, { align: 'center' });
-    doc.text('HERE', stampX + stampSize / 2, stampY + stampSize / 2 + 0.15, { align: 'center' });
+    // Stamp Placeholder (top-right, 0.5 inch margins for text)
+    doc.setFontSize(8);
+    const stampTextRightEdgeX = 9.5 - 0.5; // 9.0 inches
+    const pointsToInches = 1 / 72;
+    const fontSizeInInches_8pt = 8 * pointsToInches;
+    
+    // Position baseline of first line so top of text is approx 0.5" from edge
+    let currentStampTextY = 0.5 + fontSizeInInches_8pt * 0.75; 
+
+    doc.text('PLACE', stampTextRightEdgeX, currentStampTextY, { align: 'right' });
+    currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line (approx 1.1 line spacing)
+    doc.text('STAMP', stampTextRightEdgeX, currentStampTextY, { align: 'right' });
+    currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line
+    doc.text('HERE', stampTextRightEdgeX, currentStampTextY, { align: 'right' });
     doc.setFontSize(10); // Reset font size
+
 
     // POSTNET Barcode Placeholder (below recipient)
     const postnetBarcode = getPostnetBarcode(recipientAddress.zip);
@@ -139,7 +146,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     if (printWindow) {
       let htmlContent = '<html><head><title>Print Envelope</title>';
       htmlContent += '<style>';
-      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }'; // Landscape for typical #10
+      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }'; 
       htmlContent += 'body { margin: 0; padding: 0; width: 9.5in; height: 4.125in; display: flex; align-items: center; justify-content: center; overflow: hidden; }';
       htmlContent += ".name-container { font-family: 'Verdana', sans-serif; font-weight: bold; font-size: 1.6875rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
       htmlContent += '</style></head><body>';
@@ -150,8 +157,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '  var printed = false;';
       htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
       htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
-      htmlContent += '};';
-      htmlContent += '<\/script>';
+      htmlContent += '<\/script>'; // Escaped slash
       htmlContent += '</body></html>';
 
       printWindow.document.write(htmlContent);
@@ -277,11 +283,11 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                       <div>{`${returnAddress.city}${returnAddress.city ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`}</div>
                     </div>
                     
-                    {/* Stamp Preview */}
-                    <div className="absolute top-[0.5in] right-[0.5in] w-[0.5in] h-[0.5in] flex flex-col items-center justify-center text-slate-400 text-[8px]" style={{ transform: 'scale(0.104)', transformOrigin: 'top right' }}>
-                        <div style={{lineHeight: '1.1'}}>PLACE</div>
-                        <div style={{lineHeight: '1.1'}}>STAMP</div>
-                        <div style={{lineHeight: '1.1'}}>HERE</div>
+                    {/* Stamp Preview Text*/}
+                    <div className="absolute top-[0.5in] right-[0.5in] text-right leading-tight text-slate-400 text-[8px]" style={{ transform: 'scale(0.104)', transformOrigin: 'top right', width: '1.5in' /* give some width for right align */ }}>
+                        <div>PLACE</div>
+                        <div>STAMP</div>
+                        <div>HERE</div>
                     </div>
 
                     {/* Recipient Address Preview */}
@@ -347,5 +353,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default EnvelopePrinterPage;
+
+    
 
     
