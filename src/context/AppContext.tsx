@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
-  ShoppingCart, ClipboardCheck, ListPlus // Added ListPlus
+  ShoppingCart, ClipboardCheck, ListPlus, ListChecks // Added ListChecks
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
@@ -23,7 +23,8 @@ import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
 import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
 import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
 import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
-import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage'; // New page
+import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage';
+import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage'; // New Page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -94,7 +95,8 @@ const navGroupsData: NavGroup[] = [
   {
     groupLabel: 'Operations & Inventory',
     items: [
-      { id: 'inventory', name: 'Inventory', icon: Boxes, title: 'Inventory Management', component: InventoryPage },
+      { id: 'inventory', name: 'Inventory Master', icon: Boxes, title: 'Inventory Master Data', component: InventoryPage },
+      { id: 'weekly_inventory', name: 'Weekly Inventory', icon: ListChecks, title: 'Weekly Inventory Count', description: "Perform and record weekly inventory counts.", component: WeeklyInventoryPage },
       { id: 'create_purchase_order', name: 'Create PO', icon: ListPlus, title: 'Create Purchase Order', description: "Build a new purchase order for a vendor.", component: CreatePurchaseOrderPage },
       { id: 'purchase_orders', name: 'Manage POs', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
       { id: 'vendors', name: 'Vendors', icon: Truck, title: 'Vendor Management', description: "Manage vendor contracts, orders, and relationships.", component: GenericPlaceholderPage },
@@ -241,3 +243,6 @@ export const useAppContext = () => {
   }
   return context;
 };
+
+
+    
