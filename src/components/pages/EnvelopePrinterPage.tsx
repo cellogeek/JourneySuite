@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Printer, Mail, User, Home, MapPin, Building, Globe } from 'lucide-react'; // Added Building, Globe
+import { Printer, Mail, User, Home, MapPin, Building, Globe } from 'lucide-react';
 
 interface Address {
   name: string;
@@ -35,9 +35,12 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   const [showStandardPreview, setShowStandardPreview] = useState(false);
   const [showNameOnlyPreview, setShowNameOnlyPreview] = useState(false);
   
-  const [isPdfLibReady, setIsPdfLibReady] = useState(false);
+  const [isPdfLibReady, setIsPdfLibReady] = useState(false); // Kept for potential use by other components like CheckWriter
 
   useEffect(() => {
+    // This useEffect loads jsPDF. It's kept in case other components
+    // (like CheckWriterPage if navigated to) might benefit from it being preloaded.
+    // However, this page's standard envelope will no longer use it.
     if ((window as any).jspdf) {
         setIsPdfLibReady(true);
         return;
@@ -67,71 +70,67 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   }
 
   const generateStandardEnvelope = () => {
-    if (!isPdfLibReady || !(window as any).jspdf) {
-        alert("PDF library is not ready yet. Please wait a moment.");
-        return;
-    }
      if (!recipientAddress.name && !recipientAddress.street && !recipientAddress.city && !recipientAddress.state && !recipientAddress.zip) {
         alert("Please enter complete recipient information.");
         return;
     }
-    
-    const { jsPDF } = (window as any).jspdf;
-    // #10 Envelope: 9.5 inches wide, 4.125 inches tall
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [9.5, 4.125] });
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    setShowStandardPreview(true);
 
-    // Return Address (top-left, inset by 0.5 inch)
-    const returnX = 0.5; 
-    let returnY = 0.5; 
-    if (returnAddress.name) doc.text(returnAddress.name, returnX, returnY);
-    if (returnAddress.street) doc.text(returnAddress.street, returnX, returnY += 0.18);
-    if (returnAddress.city || returnAddress.state || returnAddress.zip) {
-        doc.text(`${returnAddress.city}${returnAddress.city && (returnAddress.state || returnAddress.zip) ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`, returnX, returnY += 0.18);
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      let htmlContent = '<html><head><title>Print Standard Envelope</title>';
+      htmlContent += '<style>';
+      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }';
+      htmlContent += 'body { width: 9.5in; height: 4.125in; margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; font-size: 10pt; position: relative; overflow: hidden; }';
+      htmlContent += '.return-address { position: absolute; top: 0.5in; left: 0.5in; line-height: 1.4; font-size: 9pt; }';
+      htmlContent += '.stamp-area { position: absolute; top: 0.5in; right: 0.5in; width: 1.2in; text-align: center; line-height: 1.2; font-size: 8pt; color: #888; }';
+      htmlContent += '.recipient-address { position: absolute; top: 1.9in; left: 4.75in; transform: translateX(-50%); text-align: center; line-height: 1.5; font-size: 11pt; max-width: 4in; }';
+      htmlContent += '.postnet-barcode { position: absolute; bottom: 0.4in; left: 4.75in; transform: translateX(-50%); text-align: center; font-family: "Courier New", Courier, monospace; font-size: 12pt; letter-spacing: 0.1em; }';
+      htmlContent += '.address-line { margin-bottom: 0.05in; }';
+      htmlContent += '</style></head><body>';
+      
+      htmlContent += '<div class="return-address">';
+      if (returnAddress.name) htmlContent += '<div class="address-line">' + escapeHtml(returnAddress.name) + '</div>';
+      if (returnAddress.street) htmlContent += '<div class="address-line">' + escapeHtml(returnAddress.street) + '</div>';
+      if (returnAddress.city || returnAddress.state || returnAddress.zip) {
+        htmlContent += '<div class="address-line">' + escapeHtml(returnAddress.city) + (returnAddress.city && (returnAddress.state || returnAddress.zip) ? ', ' : '') + escapeHtml(returnAddress.state) + ' ' + escapeHtml(returnAddress.zip) + '</div>';
+      }
+      htmlContent += '</div>';
+
+      htmlContent += '<div class="stamp-area">';
+      htmlContent += '<div>PLACE</div><div>STAMP</div><div>HERE</div>';
+      htmlContent += '</div>';
+
+      htmlContent += '<div class="recipient-address">';
+      if (recipientAddress.name) htmlContent += '<div class="address-line"><strong>' + escapeHtml(recipientAddress.name) + '</strong></div>';
+      if (recipientAddress.street) htmlContent += '<div class="address-line">' + escapeHtml(recipientAddress.street) + '</div>';
+      if (recipientAddress.city || recipientAddress.state || recipientAddress.zip) {
+        htmlContent += '<div class="address-line">' + escapeHtml(recipientAddress.city) + (recipientAddress.city && (recipientAddress.state || recipientAddress.zip) ? ', ' : '') + escapeHtml(recipientAddress.state) + ' ' + escapeHtml(recipientAddress.zip) + '</div>';
+      }
+      htmlContent += '</div>';
+      
+      const postnetValue = getPostnetBarcode(recipientAddress.zip);
+      if (postnetValue) {
+        htmlContent += '<div class="postnet-barcode">' + escapeHtml(postnetValue) + '</div>';
+      }
+
+      htmlContent += '<script>';
+      htmlContent += 'window.onload = function() {';
+      htmlContent += '  window.print();';
+      htmlContent += '  var printed = false;';
+      htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
+      htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
+      htmlContent += '};';
+      htmlContent += '<\/script>';
+      htmlContent += '</body></html>';
+      
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      alert("Attempting to print envelope. Note: ZIP+4 lookup and scannable POSTNET barcode generation are not yet implemented. The barcode shown is a visual placeholder.");
+
+    } else {
+      alert("Could not open print window. Please check your browser's pop-up settings.");
     }
-
-    // Recipient Address (center-ish)
-    const recipientX = 4.25; // Approx center of 9.5 inch width, adjust for text length
-    let recipientY = 1.8; // Slightly below vertical center
-    if (recipientAddress.name) doc.text(recipientAddress.name, recipientX, recipientY, {align: 'center'});
-    if (recipientAddress.street) doc.text(recipientAddress.street, recipientX, recipientY += 0.20, {align: 'center'});
-    if (recipientAddress.city || recipientAddress.state || recipientAddress.zip) {
-        doc.text(`${recipientAddress.city}${recipientAddress.city && (recipientAddress.state || returnAddress.zip) ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`, recipientX, recipientY += 0.20, {align: 'center'});
-    }
-
-    // Stamp Placeholder Text (top-right, 0.5 inch margins, center-aligned text)
-    doc.setFontSize(8);
-    const pointsToInches = 1 / 72;
-    const fontSizeInInches_8pt = 8 * pointsToInches;
-    
-    // Center X for stamp area (assuming stamp area is ~1 inch wide, 0.5 inch from right edge)
-    const stampTextCenterX = 9.5 - 0.5 - 0.5; // 8.5 inches from left
-    
-    let currentStampTextY = 0.5 + fontSizeInInches_8pt * 0.75; // Top margin for first line
-    doc.text('PLACE', stampTextCenterX, currentStampTextY, { align: 'center' });
-    currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line
-    doc.text('STAMP', stampTextCenterX, currentStampTextY, { align: 'center' });
-    currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line
-    doc.text('HERE', stampTextCenterX, currentStampTextY, { align: 'center' });
-    doc.setFontSize(10); // Reset font size
-
-
-    // POSTNET Barcode Placeholder (below recipient)
-    const postnetBarcode = getPostnetBarcode(recipientAddress.zip);
-    if (postnetBarcode) {
-        doc.setFont('courier', 'normal'); // Monospaced font for barcode look
-        doc.setFontSize(12);
-        doc.text(postnetBarcode, recipientX, recipientY + 0.5, { align: 'center' });
-        doc.setFont('helvetica', 'normal'); // Reset font
-        doc.setFontSize(10);
-    }
-    
-    alert("Generated PDF. Note: ZIP+4 lookup and scannable POSTNET barcode generation are not yet implemented. The barcode shown is a visual placeholder.");
-
-    setShowStandardPreview(true); 
-    doc.save(`envelope-to-${recipientAddress.name.replace(/[^a-zA-Z0-9]/g, '_') || 'recipient'}.pdf`);
   };
 
   const printNameOnlyEnvelope = () => {
@@ -149,13 +148,14 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += 'body { margin: 0; padding: 0; width: 9.5in; height: 4.125in; display: flex; align-items: center; justify-content: center; overflow: hidden; }';
       htmlContent += ".name-container { font-family: 'Verdana', sans-serif; font-weight: bold; font-size: 1.6875rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
       htmlContent += '</style></head><body>';
-      htmlContent += '<div class="name-container">' + nameOnly.trim().replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</div>';
+      htmlContent += '<div class="name-container">' + escapeHtml(nameOnly.trim()) + '</div>';
       htmlContent += '<script>';
       htmlContent += 'window.onload = function() {';
       htmlContent += '  window.print();';
       htmlContent += '  var printed = false;';
       htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
       htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
+      htmlContent += '};';
       htmlContent += '<\/script>'; 
       htmlContent += '</body></html>';
 
@@ -169,10 +169,21 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   const getPostnetBarcode = (zip: string) => {
     const zipDigits = zip.replace(/[^0-9]/g, '');
     if (zipDigits.length >= 5) {
-      return "| | | | |  | | | |  | | | |  | | | |  | | | |  | | | | |";
+      return "| | | | |  | | | |  | | | |  | | | |  | | | |  | | | | |"; // Visual Placeholder
     }
     return "";
   }
+
+  const escapeHtml = (unsafe: string) => {
+    if (typeof unsafe !== 'string') return '';
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+  }
+
 
   const isRecipientAddressFilled = () => {
     return recipientAddress.name.trim() !== '' || 
@@ -262,20 +273,20 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                 onClick={generateStandardEnvelope} 
                 size="action" 
                 className="w-full md:w-auto" 
-                disabled={!isPdfLibReady || !isRecipientAddressFilled()}
+                disabled={!isRecipientAddressFilled()}
               >
-                <Printer size={18} className="mr-2"/> {isPdfLibReady ? "Generate Standard Envelope PDF" : "Loading Tools..."}
+                <Printer size={18} className="mr-2"/> Print Standard Envelope
               </Button>
 
               {showStandardPreview && (
                 <div className="mt-6 p-4 border-2 border-dashed border-sky-300 rounded-lg bg-sky-50/50">
                   <h3 className="text-lg font-semibold text-sky-700 mb-3 text-center">Envelope Preview (#10)</h3>
                   <div 
-                    className="relative w-full aspect-[9.5/4.125] bg-white border border-slate-400 shadow-md mx-auto max-w-2xl p-2 text-[10px]" 
-                    style={{ fontFamily: "'Courier New', Courier, monospace" }}
+                    className="relative w-full bg-white border border-slate-400 shadow-md mx-auto max-w-2xl text-[10px]" 
+                    style={{ aspectRatio: '9.5 / 4.125', fontFamily: "'Helvetica', Arial, sans-serif" }}
                   >
                     {/* Return Address Preview */}
-                    <div className="absolute top-[0.5in] left-[0.5in] leading-tight" style={{ transform: 'scale(0.104)', transformOrigin: 'top left' }}>
+                    <div className="absolute text-[9pt] leading-tight" style={{ top: '0.5in', left: '0.5in', transform: 'scale(0.104)', transformOrigin: 'top left' }}>
                       <div>{returnAddress.name}</div>
                       <div>{returnAddress.street}</div>
                       <div>{`${returnAddress.city}${returnAddress.city ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`}</div>
@@ -283,11 +294,13 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     
                     {/* Stamp Preview Text (Center-aligned) */}
                     <div 
-                        className="absolute top-[0.5in] left-[8.5in] text-center leading-tight text-slate-400 text-[8px]" 
+                        className="absolute text-center leading-tight text-slate-400 text-[8pt]" 
                         style={{ 
-                            transform: 'translateX(-50%) scale(0.104)', 
-                            transformOrigin: 'top center',
-                            width: '1in' /* Approximate width for centering text */
+                            top: '0.5in', 
+                            right: '0.5in',
+                            width: '1.2in', // Matching CSS
+                            transform: 'scale(0.104)', 
+                            transformOrigin: 'top right',
                         }}
                     >
                         <div>PLACE</div>
@@ -296,15 +309,15 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     </div>
 
                     {/* Recipient Address Preview */}
-                    <div className="absolute top-[1.8in] left-[4.75in] transform -translate-x-1/2 text-center leading-relaxed" style={{ transform: 'translate(-50%, -0%) scale(0.104)', transformOrigin: 'top center', width: '4.5in' }}>
-                        <div className="font-semibold text-sm">{recipientAddress.name}</div>
-                        <div className="text-sm">{recipientAddress.street}</div>
-                        <div className="text-sm">{`${recipientAddress.city}${recipientAddress.city ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`}</div>
+                    <div className="absolute text-center leading-normal text-[11pt]" style={{ top: '1.9in', left: '4.75in', transform: 'translateX(-50%) scale(0.104)', transformOrigin: 'top center', maxWidth: '4in' }}>
+                        <div className="font-semibold">{recipientAddress.name}</div>
+                        <div>{recipientAddress.street}</div>
+                        <div>{`${recipientAddress.city}${recipientAddress.city ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`}</div>
                     </div>
 
                     {/* POSTNET Barcode Preview */}
                     {getPostnetBarcode(recipientAddress.zip) && (
-                        <div className="absolute bottom-[0.5in] left-1/2 transform -translate-x-1/2 text-center text-xs tracking-[0.15em]" style={{ transform: 'translate(-50%, 0) scale(0.104)', transformOrigin: 'bottom center' }}>
+                        <div className="absolute text-center text-[12pt] tracking-[0.1em]" style={{ bottom: '0.4in', left: '4.75in', transform: 'translateX(-50%) scale(0.104)', transformOrigin: 'bottom center', fontFamily: "'Courier New', Courier, monospace" }}>
                           {getPostnetBarcode(recipientAddress.zip)}
                         </div>
                     )}
@@ -341,7 +354,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                       style={{ 
                         fontFamily: "'Verdana', sans-serif", 
                         fontWeight: 'bold', 
-                        fontSize: '1.6875rem' /* Approx 27px */
+                        fontSize: '1.6875rem'
                       }}
                     >
                         {nameOnly}
