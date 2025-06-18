@@ -98,23 +98,23 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     if (recipientAddress.name) doc.text(recipientAddress.name, recipientX, recipientY, {align: 'center'});
     if (recipientAddress.street) doc.text(recipientAddress.street, recipientX, recipientY += 0.20, {align: 'center'});
     if (recipientAddress.city || recipientAddress.state || recipientAddress.zip) {
-        doc.text(`${recipientAddress.city}${recipientAddress.city && (recipientAddress.state || recipientAddress.zip) ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`, recipientX, recipientY += 0.20, {align: 'center'});
+        doc.text(`${recipientAddress.city}${recipientAddress.city && (recipientAddress.state || returnAddress.zip) ? ', ' : ''}${recipientAddress.state} ${recipientAddress.zip}`, recipientX, recipientY += 0.20, {align: 'center'});
     }
 
-    // Stamp Placeholder (top-right, 0.5 inch margins for text)
+    // Stamp Placeholder Text (top-right, 0.5 inch margins, center-aligned text)
     doc.setFontSize(8);
-    const stampTextRightEdgeX = 9.5 - 0.5; // 9.0 inches
     const pointsToInches = 1 / 72;
     const fontSizeInInches_8pt = 8 * pointsToInches;
     
-    // Position baseline of first line so top of text is approx 0.5" from edge
-    let currentStampTextY = 0.5 + fontSizeInInches_8pt * 0.75; 
-
-    doc.text('PLACE', stampTextRightEdgeX, currentStampTextY, { align: 'right' });
-    currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line (approx 1.1 line spacing)
-    doc.text('STAMP', stampTextRightEdgeX, currentStampTextY, { align: 'right' });
+    // Center X for stamp area (assuming stamp area is ~1 inch wide, 0.5 inch from right edge)
+    const stampTextCenterX = 9.5 - 0.5 - 0.5; // 8.5 inches from left
+    
+    let currentStampTextY = 0.5 + fontSizeInInches_8pt * 0.75; // Top margin for first line
+    doc.text('PLACE', stampTextCenterX, currentStampTextY, { align: 'center' });
     currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line
-    doc.text('HERE', stampTextRightEdgeX, currentStampTextY, { align: 'right' });
+    doc.text('STAMP', stampTextCenterX, currentStampTextY, { align: 'center' });
+    currentStampTextY += fontSizeInInches_8pt * 1.1; // Move to next line
+    doc.text('HERE', stampTextCenterX, currentStampTextY, { align: 'center' });
     doc.setFontSize(10); // Reset font size
 
 
@@ -128,10 +128,9 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
         doc.setFontSize(10);
     }
     
-    // Alert for stubbed ZIP+4 and POSTNET functionality
     alert("Generated PDF. Note: ZIP+4 lookup and scannable POSTNET barcode generation are not yet implemented. The barcode shown is a visual placeholder.");
 
-    setShowStandardPreview(true); // Keep showing on-page preview
+    setShowStandardPreview(true); 
     doc.save(`envelope-to-${recipientAddress.name.replace(/[^a-zA-Z0-9]/g, '_') || 'recipient'}.pdf`);
   };
 
@@ -157,7 +156,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '  var printed = false;';
       htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
       htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
-      htmlContent += '<\/script>'; // Escaped slash
+      htmlContent += '<\/script>'; 
       htmlContent += '</body></html>';
 
       printWindow.document.write(htmlContent);
@@ -170,7 +169,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   const getPostnetBarcode = (zip: string) => {
     const zipDigits = zip.replace(/[^0-9]/g, '');
     if (zipDigits.length >= 5) {
-      // This is a placeholder, not a real POSTNET encoding
       return "| | | | |  | | | |  | | | |  | | | |  | | | |  | | | | |";
     }
     return "";
@@ -283,8 +281,15 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                       <div>{`${returnAddress.city}${returnAddress.city ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`}</div>
                     </div>
                     
-                    {/* Stamp Preview Text*/}
-                    <div className="absolute top-[0.5in] right-[0.5in] text-right leading-tight text-slate-400 text-[8px]" style={{ transform: 'scale(0.104)', transformOrigin: 'top right', width: '1.5in' /* give some width for right align */ }}>
+                    {/* Stamp Preview Text (Center-aligned) */}
+                    <div 
+                        className="absolute top-[0.5in] left-[8.5in] text-center leading-tight text-slate-400 text-[8px]" 
+                        style={{ 
+                            transform: 'translateX(-50%) scale(0.104)', 
+                            transformOrigin: 'top center',
+                            width: '1in' /* Approximate width for centering text */
+                        }}
+                    >
                         <div>PLACE</div>
                         <div>STAMP</div>
                         <div>HERE</div>
@@ -353,7 +358,4 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default EnvelopePrinterPage;
-
-    
-
     
