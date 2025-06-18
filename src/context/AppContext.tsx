@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
-  ShoppingCart, ClipboardCheck, ListPlus, ListChecks // Added ListChecks
+  ShoppingCart, ClipboardCheck, ListPlus, ListChecks
 } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
@@ -24,7 +24,8 @@ import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
 import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
 import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
 import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage';
-import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage'; // New Page
+import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage';
+import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage'; // New Page
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -99,6 +100,7 @@ const navGroupsData: NavGroup[] = [
       { id: 'weekly_inventory', name: 'Weekly Inventory', icon: ListChecks, title: 'Weekly Inventory Count', description: "Perform and record weekly inventory counts.", component: WeeklyInventoryPage },
       { id: 'create_purchase_order', name: 'Create PO', icon: ListPlus, title: 'Create Purchase Order', description: "Build a new purchase order for a vendor.", component: CreatePurchaseOrderPage },
       { id: 'purchase_orders', name: 'Manage POs', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
+      { id: 'sportlife_po_creator', name: 'SportLife POs', icon: ShoppingCart, title: 'SportLife PO Creator', description: "Create and manage batched POs for SportLife Nutrition.", component: SportLifePoCreatorPage },
       { id: 'vendors', name: 'Vendors', icon: Truck, title: 'Vendor Management', description: "Manage vendor contracts, orders, and relationships.", component: GenericPlaceholderPage },
       { id: 'special_orders', name: 'Special Orders', icon: ClipboardList, title: 'Special Orders Management', description: "Manage unique, recurring, and custom orders.", component: SpecialOrdersPage },
     ],
@@ -243,6 +245,5 @@ export const useAppContext = () => {
   }
   return context;
 };
-
 
     
