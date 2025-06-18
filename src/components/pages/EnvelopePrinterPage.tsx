@@ -83,9 +83,9 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
 
-    // Return Address (top-left)
-    const returnX = 0.25;
-    let returnY = 0.25;
+    // Return Address (top-left, inset by 0.5 inch)
+    const returnX = 0.5; 
+    let returnY = 0.5; 
     if (returnAddress.name) doc.text(returnAddress.name, returnX, returnY);
     if (returnAddress.street) doc.text(returnAddress.street, returnX, returnY += 0.18);
     if (returnAddress.city || returnAddress.state || returnAddress.zip) {
@@ -102,15 +102,14 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     }
 
     // Stamp Placeholder (top-right)
-    const stampSize = 0.5;
-    const stampX = 9.5 - stampSize - 0.25;
-    const stampY = 0.25;
-    doc.rect(stampX, stampY, stampSize, stampSize, 'S'); // 'S' for stroke
-    doc.setFontSize(6);
+    const stampSize = 0.5; // conceptual size for text placement
+    const stampX = 9.5 - stampSize - 0.5; // 0.5in from right edge
+    const stampY = 0.5; // 0.5in from top edge
+    doc.setFontSize(8); // Smaller font for stamp text
     doc.text('PLACE', stampX + stampSize / 2, stampY + stampSize / 2 - 0.05, { align: 'center' });
     doc.text('STAMP', stampX + stampSize / 2, stampY + stampSize / 2 + 0.05, { align: 'center' });
     doc.text('HERE', stampX + stampSize / 2, stampY + stampSize / 2 + 0.15, { align: 'center' });
-    doc.setFontSize(10);
+    doc.setFontSize(10); // Reset font size
 
     // POSTNET Barcode Placeholder (below recipient)
     const postnetBarcode = getPostnetBarcode(recipientAddress.zip);
@@ -140,7 +139,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     if (printWindow) {
       let htmlContent = '<html><head><title>Print Envelope</title>';
       htmlContent += '<style>';
-      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }';
+      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }'; // Landscape for typical #10
       htmlContent += 'body { margin: 0; padding: 0; width: 9.5in; height: 4.125in; display: flex; align-items: center; justify-content: center; overflow: hidden; }';
       htmlContent += ".name-container { font-family: 'Verdana', sans-serif; font-weight: bold; font-size: 1.6875rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
       htmlContent += '</style></head><body>';
@@ -152,7 +151,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
       htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
       htmlContent += '};';
-      htmlContent += '<\/script>'; // Forward slash in closing script tag is escaped
+      htmlContent += '<\/script>';
       htmlContent += '</body></html>';
 
       printWindow.document.write(htmlContent);
@@ -268,18 +267,18 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                 <div className="mt-6 p-4 border-2 border-dashed border-sky-300 rounded-lg bg-sky-50/50">
                   <h3 className="text-lg font-semibold text-sky-700 mb-3 text-center">Envelope Preview (#10)</h3>
                   <div 
-                    className="relative w-full aspect-[9.5/4.125] bg-white border border-slate-400 shadow-md mx-auto max-w-2xl p-2 text-[10px]" // Adjusted base font size for preview
+                    className="relative w-full aspect-[9.5/4.125] bg-white border border-slate-400 shadow-md mx-auto max-w-2xl p-2 text-[10px]" 
                     style={{ fontFamily: "'Courier New', Courier, monospace" }}
                   >
                     {/* Return Address Preview */}
-                    <div className="absolute top-[0.25in] left-[0.25in] leading-tight" style={{ transform: 'scale(0.104)', transformOrigin: 'top left' }}>
+                    <div className="absolute top-[0.5in] left-[0.5in] leading-tight" style={{ transform: 'scale(0.104)', transformOrigin: 'top left' }}>
                       <div>{returnAddress.name}</div>
                       <div>{returnAddress.street}</div>
                       <div>{`${returnAddress.city}${returnAddress.city ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`}</div>
                     </div>
                     
                     {/* Stamp Preview */}
-                    <div className="absolute top-[0.25in] right-[0.25in] w-[0.5in] h-[0.5in] border border-slate-300 flex flex-col items-center justify-center text-slate-400 text-[6px]" style={{ transform: 'scale(0.104)', transformOrigin: 'top right' }}>
+                    <div className="absolute top-[0.5in] right-[0.5in] w-[0.5in] h-[0.5in] flex flex-col items-center justify-center text-slate-400 text-[8px]" style={{ transform: 'scale(0.104)', transformOrigin: 'top right' }}>
                         <div style={{lineHeight: '1.1'}}>PLACE</div>
                         <div style={{lineHeight: '1.1'}}>STAMP</div>
                         <div style={{lineHeight: '1.1'}}>HERE</div>
