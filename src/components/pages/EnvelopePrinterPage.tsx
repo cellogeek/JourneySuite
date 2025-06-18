@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Printer, Mail, User, Home, MapPin, Building, Globe, Sparkles, Loader2 } from 'lucide-react';
-import { suggestAddress, type SuggestAddressInput, type SuggestAddressOutput } from '@/ai/flows/suggest-address-flow';
+import { Printer, Mail, User, Home, MapPin, Building, Globe } from 'lucide-react';
 
 interface Address {
   name: string;
@@ -38,11 +37,11 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
   
   const [isPdfLibReady, setIsPdfLibReady] = useState(false); // Kept for CheckWriter or other potential PDF uses
 
-  const [isSuggestingAddress, setIsSuggestingAddress] = useState(false);
-  const [suggestionError, setSuggestionError] = useState('');
-
-
   useEffect(() => {
+    // This useEffect loads jsPDF, which is not used by this component anymore for standard envelopes,
+    // but might be used by other components like CheckWriterPage if it's navigated to.
+    // If this page becomes the *only* PDF user, this could be removed.
+    // For now, keeping it doesn't harm if CheckWriterPage still relies on this shared loading.
     if ((window as any).jspdf) {
         setIsPdfLibReady(true);
         return;
@@ -92,18 +91,23 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     if (printWindow) {
       let htmlContent = '<html><head><title>Print Standard Envelope</title>';
       htmlContent += '<style>';
-      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }';
+      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }'; // #10 envelope size
       htmlContent += 'body { width: 9.5in; height: 4.125in; margin: 0; padding: 0; font-family: Helvetica, Arial, sans-serif; font-size: 10pt; position: relative; overflow: hidden; }';
       
+      // Return Address: top-left, 0.5in margin
       htmlContent += '.return-address { position: absolute; top: 0.5in; left: 0.5in; line-height: 1.4; font-size: 9pt; }';
       
+      // Stamp Area: top-right, 0.5in margin, text center-aligned
       htmlContent += '.stamp-area { position: absolute; top: 0.5in; right: 0.5in; width: 1.2in; text-align: center; line-height: 1.2; font-size: 8pt; color: #333; }';
       
+      // Recipient Address: centered on the envelope (typical placement)
+      // Approx. 2in from top, 4.75in from left (center of 9.5in width)
       htmlContent += '.recipient-address { position: absolute; top: 1.9in; left: 4.75in; transform: translateX(-50%); text-align: center; line-height: 1.5; font-size: 11pt; max-width: 4in; }';
       
-      htmlContent += '.address-line { margin-bottom: 0.05in; }';
+      htmlContent += '.address-line { margin-bottom: 0.05in; }'; // Small gap between address lines
       htmlContent += '</style></head><body>';
       
+      // Return Address Content
       htmlContent += '<div class="return-address">';
       if (returnAddress.name) htmlContent += '<div class="address-line">' + escapeHtml(returnAddress.name) + '</div>';
       if (returnAddress.street) htmlContent += '<div class="address-line">' + escapeHtml(returnAddress.street) + '</div>';
@@ -112,10 +116,12 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       }
       htmlContent += '</div>';
 
+      // Stamp Area Content (center-aligned text)
       htmlContent += '<div class="stamp-area">';
       htmlContent += '<div>PLACE</div><div>STAMP</div><div>HERE</div>';
       htmlContent += '</div>';
 
+      // Recipient Address Content
       htmlContent += '<div class="recipient-address">';
       if (recipientAddress.name) htmlContent += '<div class="address-line"><strong>' + escapeHtml(recipientAddress.name) + '</strong></div>';
       if (recipientAddress.street) htmlContent += '<div class="address-line">' + escapeHtml(recipientAddress.street) + '</div>';
@@ -124,14 +130,16 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       }
       htmlContent += '</div>';
       
+      // Script to trigger print and close window
       htmlContent += '<script>';
       htmlContent += 'window.onload = function() {';
       htmlContent += '  window.print();';
       htmlContent += '  var printed = false;';
       htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
+      // Fallback close if onafterprint doesn't fire (e.g., user cancels print immediately)
       htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
       htmlContent += '};';
-      htmlContent += '<\/script>';
+      htmlContent += '<\/script>'; // Escaped closing script tag
       htmlContent += '</body></html>';
       
       printWindow.document.write(htmlContent);
@@ -152,9 +160,9 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     if (printWindow) {
       let htmlContent = '<html><head><title>Print Envelope</title>';
       htmlContent += '<style>';
-      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }'; 
+      htmlContent += '@page { size: 9.5in 4.125in; margin: 0; }'; // #10 envelope, landscape-like for typical view
       htmlContent += 'body { margin: 0; padding: 0; width: 9.5in; height: 4.125in; display: flex; align-items: center; justify-content: center; overflow: hidden; }';
-      htmlContent += ".name-container { font-family: 'Verdana', sans-serif; font-weight: bold; font-size: 1.6875rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
+      htmlContent += ".name-container { font-family: 'Verdana', sans-serif; font-weight: bold; font-size: 1.6875rem; /* Approx 27px (18px * 1.5) */ text-align: center; line-height: 1.2; max-width: 90%; /* Max width of name relative to envelope width */ word-break: break-word; }";
       htmlContent += '</style></head><body>';
       htmlContent += '<div class="name-container">' + escapeHtml(nameOnly.trim()) + '</div>';
       htmlContent += '<script>';
@@ -162,9 +170,9 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '  window.print();';
       htmlContent += '  var printed = false;';
       htmlContent += '  window.onafterprint = function() { printed = true; window.close(); };';
-      htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);';
+      htmlContent += '  setTimeout(function() { if (!printed && !printWindow.closed) { printWindow.close(); } }, 2000);'; // Fallback close
       htmlContent += '};';
-      htmlContent += '<\/script>'; 
+      htmlContent += '<\/script>'; // Ensure script tag is properly escaped
       htmlContent += '</body></html>';
 
       printWindow.document.write(htmlContent);
@@ -178,31 +186,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
     return recipientAddress.name.trim() !== '' || 
            recipientAddress.street.trim() !== '' ||
            (recipientAddress.city.trim() !== '' && recipientAddress.state.trim() !== '' && recipientAddress.zip.trim() !== '');
-  };
-
-  const handleSuggestAddress = async () => {
-    if (!recipientAddress.name.trim()) {
-      setSuggestionError("Please enter a recipient name first.");
-      return;
-    }
-    setIsSuggestingAddress(true);
-    setSuggestionError('');
-    try {
-      const suggestion = await suggestAddress({ query: recipientAddress.name });
-      setRecipientAddress({
-        name: suggestion.name,
-        street: suggestion.street,
-        city: suggestion.city,
-        state: suggestion.state,
-        zip: suggestion.zip,
-      });
-      setShowStandardPreview(false); 
-    } catch (error: any) {
-      console.error("Error suggesting address:", error);
-      setSuggestionError(error.message || "Failed to suggest address.");
-    } finally {
-      setIsSuggestingAddress(false);
-    }
   };
 
   return (
@@ -263,26 +246,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     <Label htmlFor="recipientName" className="flex items-center gap-1 text-sm"><User size={14}/>Name/Company</Label>
                     <Input id="recipientName" value={recipientAddress.name} onChange={e => handleAddressChange('recipient', 'name', e.target.value)} placeholder="Recipient Name/Company" />
                   </div>
-                  <div className="md:col-span-2">
-                    <Button 
-                      type="button"
-                      onClick={handleSuggestAddress} 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-1 w-full"
-                      disabled={isSuggestingAddress || !recipientAddress.name.trim()}
-                    >
-                      {isSuggestingAddress ? (
-                        <Loader2 size={16} className="mr-2 animate-spin" />
-                      ) : (
-                        <Sparkles size={16} className="mr-2" />
-                      )}
-                      Suggest Address
-                    </Button>
-                    {suggestionError && (
-                      <p className="text-xs text-red-500 mt-1">{suggestionError}</p>
-                    )}
-                  </div>
                   <div>
                     <Label htmlFor="recipientStreet" className="flex items-center gap-1 text-sm"><Home size={14}/>Street</Label>
                     <Input id="recipientStreet" value={recipientAddress.street} onChange={e => handleAddressChange('recipient', 'street', e.target.value)} placeholder="456 Recipient Ave" />
@@ -319,21 +282,24 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                     className="relative w-full bg-white border border-slate-400 shadow-md mx-auto max-w-2xl text-[10px]" 
                     style={{ aspectRatio: '9.5 / 4.125', fontFamily: "'Helvetica', Arial, sans-serif" }}
                   >
+                    {/* Return Address Preview */}
                     <div className="absolute text-[9pt] leading-tight" style={{ top: '0.5in', left: '0.5in', transform: 'scale(0.104)', transformOrigin: 'top left' }}>
                       <div>{returnAddress.name}</div>
                       <div>{returnAddress.street}</div>
                       <div>{`${returnAddress.city}${returnAddress.city ? ', ' : ''}${returnAddress.state} ${returnAddress.zip}`}</div>
                     </div>
                     
+                    {/* Stamp Area Preview (Center Aligned) */}
                     <div 
                         className="absolute text-center leading-tight text-slate-400 text-[8pt]" 
                         style={{ 
                             top: '0.5in', 
-                            right: '0.5in',
-                            width: '1.2in', 
-                            transform: 'scale(0.104) translateX(50%)', // Adjust for centering
-                            right: 'calc(0.5in + 0.6in)', // 0.5in margin + half of 1.2in width
-                            textAlign: 'center',
+                            /* For a 1.2in wide stamp area, 0.5in from right edge: right = 0.5in. left = 9.5 - 1.2 - 0.5 = 7.8in. center X = 8.4in */
+                            /* Using direct positioning based on PDF logic for preview consistency */
+                            left: 'calc(9.5in - 0.5in - 0.6in)', /* (Envelope Width - Right Margin - Half Stamp Area Width) assuming 1.2in stamp area width */
+                            transform: 'translateX(-50%) scale(0.104)', // Adjust for centering and scaling
+                            transformOrigin: 'top center',
+                            width: '1.2in', // Define width for text-align: center to work within
                         }}
                     >
                         <div>PLACE</div>
@@ -341,6 +307,7 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
                         <div>HERE</div>
                     </div>
 
+                    {/* Recipient Address Preview */}
                     <div className="absolute text-center leading-normal text-[11pt]" style={{ top: '1.9in', left: '4.75in', transform: 'translateX(-50%) scale(0.104)', transformOrigin: 'top center', maxWidth: '4in' }}>
                         <div className="font-semibold">{recipientAddress.name}</div>
                         <div>{recipientAddress.street}</div>
@@ -396,4 +363,6 @@ const EnvelopePrinterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default EnvelopePrinterPage;
+    
+
     
