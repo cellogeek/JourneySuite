@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -59,7 +59,7 @@ interface PolkInventoryStructure {
 }
 
 interface CartInventoryStructure {
-  cartItems: SubLocationInventory; // Using a single key for cart items
+  cartItems: SubLocationInventory;
 }
 
 type TopLevelLocationKey = 'canyon' | 'polk' | 'cart';
@@ -137,11 +137,10 @@ const AddItemModal: React.FC<AddItemModalProps> = ({ activeTopLevelLocation, all
 
   const subLocationOptions = Object.keys(allInventory[activeTopLevelLocation]).map(key => ({
     value: key,
-    label: formatItemName(key) === key ? key.toUpperCase() : formatItemName(key) // Better display for "cartItems"
+    label: formatItemName(key) === key ? key.toUpperCase() : formatItemName(key)
   }));
 
   useEffect(() => {
-    // Set initial sublocation based on activeTopLevelLocation
     if (activeTopLevelLocation && allInventory[activeTopLevelLocation]) {
       const firstSubKey = Object.keys(allInventory[activeTopLevelLocation])[0];
       if (firstSubKey) setSublocation(firstSubKey);
@@ -289,7 +288,7 @@ interface EditItemModalProps {
     originalTopLevelLocationKey: TopLevelLocationKey;
     originalSubLocationKey: string;
     originalItemKey: string;
-    newTopLevelLocationKey: TopLevelLocationKey; // For this iteration, top-level moves are not directly supported in modal
+    newTopLevelLocationKey: TopLevelLocationKey;
     newSubLocationKey: string;
     newItemName: string;
     unit: string;
@@ -341,7 +340,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ topLevelLocationKey, subL
       originalTopLevelLocationKey: topLevelLocationKey,
       originalSubLocationKey: subLocationKey,
       originalItemKey: itemKey,
-      newTopLevelLocationKey: topLevelLocationKey, // Keep top-level location same for now
+      newTopLevelLocationKey: topLevelLocationKey,
       newSubLocationKey: currentSublocation,
       newItemName: currentName.trim(),
       unit: currentUnit,
@@ -443,11 +442,11 @@ interface OrderedInventoryItem extends InventoryItemData {
 }
 
 interface EditOrderModalProps {
-  inventory: SubLocationInventory; // Operates on items of the current active sub-location
+  inventory: SubLocationInventory;
   activeTopLevelLocation: TopLevelLocationKey;
   activeSubLocationKey: string;
   onClose: () => void;
-  onSave: (newOrder: InventoryItemData[], topLevel: TopLevelLocationKey, subLevel: string) => void;
+  onSave: (newOrder: SubLocationInventory, topLevel: TopLevelLocationKey, subLevel: string) => void;
 }
 
 const EditOrderModal: React.FC<EditOrderModalProps> = ({ inventory, activeTopLevelLocation, activeSubLocationKey, onClose, onSave }) => {
@@ -571,10 +570,16 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ inventory, activeTopLev
 
 
   const handleSave = () => {
-    const newOrderForSubLocation: InventoryItemData[] = orderedItems.map(item => ({
-      whole: item.whole, partial: item.partial, unit: item.unit, vendor: item.vendor || 'N/A',
-    }));
-    onSave(newOrderForSubLocation, activeTopLevelLocation, activeSubLocationKey);
+    const newSubLocationInventory: SubLocationInventory = {};
+    orderedItems.forEach(item => {
+      newSubLocationInventory[item.itemKey] = {
+        whole: item.whole,
+        partial: item.partial,
+        unit: item.unit,
+        vendor: item.vendor || 'N/A',
+      };
+    });
+    onSave(newSubLocationInventory, activeTopLevelLocation, activeSubLocationKey);
     onClose();
   };
 
@@ -626,32 +631,6 @@ const EditOrderModal: React.FC<EditOrderModalProps> = ({ inventory, activeTopLev
   );
 };
 
-interface VendorManagementProps {
-  vendors: string[];
-}
-const VendorManagement: React.FC<VendorManagementProps> = ({ vendors }) => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center text-lg sm:text-xl"><Users className="mr-2 h-5 w-5 text-sky-600"/>All Vendors</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="list-disc list-inside space-y-2 pl-5">
-          {vendors.length > 0 ? (
-            vendors.map((vendor, index) => (
-              <li key={index} className="text-slate-700 text-sm sm:text-base">
-                {vendor}
-              </li>
-            ))
-          ) : (
-            <p className="text-slate-500 italic">No vendors added yet.</p>
-          )}
-        </ul>
-      </CardContent>
-    </Card>
-  );
-};
-
 
 const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
   const [inventory, setInventory] = useState<AllLocationsInventoryState>(initialInventoryState);
@@ -671,20 +650,18 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
   const [itemToEdit, setItemToEdit] = useState<{ topLevelLocationKey: TopLevelLocationKey; subLocationKey: string; itemKey: string; itemData: InventoryItemData } | null>(null);
   
   const [activeTopLevelLocation, setActiveTopLevelLocation] = useState<TopLevelLocationKey>('canyon');
-  const [activeSubLocationTab, setActiveSubLocationTab] = useState<string>('foh'); // Default to foh or first available
+  const [activeSubLocationTab, setActiveSubLocationTab] = useState<string>('foh');
 
-  const [activeView, setActiveView] = useState<'inventory' | 'vendors'>('inventory');
   const [isEditMode, setIsEditMode] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
-  // Update activeSubLocationTab when activeTopLevelLocation changes
   useEffect(() => {
     if (activeTopLevelLocation && inventory[activeTopLevelLocation]) {
       const firstSubKey = Object.keys(inventory[activeTopLevelLocation])[0];
       if (firstSubKey) {
         setActiveSubLocationTab(firstSubKey);
       } else {
-        setActiveSubLocationTab(''); // Or some default if no sublocations exist
+        setActiveSubLocationTab(''); 
       }
     }
   }, [activeTopLevelLocation, inventory]);
@@ -700,11 +677,11 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
 
   const handleAddItem = (newItem: { name: string; topLevelLocation: TopLevelLocationKey; subLocation: string; unit: string; whole: number; partial: number; vendor: string }) => {
     setInventory(prevInventory => {
-      const newInventory = JSON.parse(JSON.stringify(prevInventory)); // Deep copy
+      const newInventory = JSON.parse(JSON.stringify(prevInventory)); 
       const itemKey = convertNameToKey(newItem.name);
       const { topLevelLocation, subLocation, unit, whole, partial, vendor } = newItem;
 
-      if (!newInventory[topLevelLocation]) newInventory[topLevelLocation] = {} as any; // Should not happen with current structure
+      if (!newInventory[topLevelLocation]) newInventory[topLevelLocation] = {} as any; 
       if (!newInventory[topLevelLocation][subLocation as keyof typeof newInventory[TopLevelLocationKey]]) {
         (newInventory[topLevelLocation] as any)[subLocation] = {};
       }
@@ -730,14 +707,12 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
               newTopLevelLocationKey, newSubLocationKey, newItemName, unit, whole, partial, vendor } = updatedItemData;
       const newItemKey = convertNameToKey(newItemName);
 
-      // Delete old item if its location or key changes
       if (originalTopLevelLocationKey !== newTopLevelLocationKey || originalSubLocationKey !== newSubLocationKey || originalItemKey !== newItemKey) {
         if (newInventory[originalTopLevelLocationKey] && (newInventory[originalTopLevelLocationKey] as any)[originalSubLocationKey] && (newInventory[originalTopLevelLocationKey] as any)[originalSubLocationKey][originalItemKey]) {
           delete (newInventory[originalTopLevelLocationKey] as any)[originalSubLocationKey][originalItemKey];
         }
       }
       
-      // Ensure target structure exists
       if (!newInventory[newTopLevelLocationKey]) newInventory[newTopLevelLocationKey] = {} as any;
       if (!(newInventory[newTopLevelLocationKey] as any)[newSubLocationKey]) (newInventory[newTopLevelLocationKey] as any)[newSubLocationKey] = {};
 
@@ -746,59 +721,6 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
     });
     setActiveTopLevelLocation(updatedItemData.newTopLevelLocationKey);
     setActiveSubLocationTab(updatedItemData.newSubLocationKey);
-  };
-  
-  const handleSaveOrderForSubLocation = (
-    newOrderedItemsData: InventoryItemData[],
-    topLevel: TopLevelLocationKey,
-    subLevel: string
-  ) => {
-    setInventory(prevInventory => {
-      const newInventory = JSON.parse(JSON.stringify(prevInventory));
-      const newSubLocationInventory: SubLocationInventory = {};
-      newOrderedItemsData.forEach(itemData => {
-          // Find original itemKey (this is tricky if names were editable in EditOrderModal, assuming names are fixed for reordering)
-          // For simplicity, this rebuilds based on the implicit order of newOrderedItemsData, assuming item names/keys are stable.
-          // A robust solution would pass item keys along with InventoryItemData from EditOrderModal
-          const originalItem = Object.entries((prevInventory[topLevel] as any)[subLevel] as SubLocationInventory)
-                               .find(([key, data]) => data.unit === itemData.unit && data.vendor === itemData.vendor); // Simplistic match, needs itemKey ideally
-          if (originalItem) {
-              newSubLocationInventory[originalItem[0]] = itemData;
-          } else {
-              // Fallback if itemKey cannot be determined, use a generated key based on name (if name was part of itemData)
-              // This part needs refinement if item names can change during order editing.
-              // For now, let's assume we are just reordering based on the original keys from the `inventory` object.
-              // The provided EditOrderModal's `onSave` takes newOrder: InventoryState, which is the whole inventory.
-              // Let's adjust this based on the expectation that `onSave` in `EditOrderModal` passes back the reordered items for the *current* sublocation.
-              // The `newOrder: InventoryItemData[]` is better.
-              // The `EditOrderModal` needs to ensure item keys are preserved or a mapping is used.
-              
-              // The provided `EditOrderModal` component's `handleSave` has:
-              // `const newOrderForSubLocation: InventoryItemData[] = orderedItems.map(...)`
-              // `onSave(newOrderForSubLocation, activeTopLevelLocation, activeSubLocationKey);`
-              // This `newOrderForSubLocation` is just an array of item data, without keys.
-              // We need to rebuild the SubLocationInventory object using the original keys from the `orderedItems` in EditOrderModal.
-              
-              // Correct approach: EditOrderModal's onSave should pass the re-ordered `OrderedInventoryItem[]`
-              // Then we can rebuild the sub-location object with correct keys.
-              // For now, let's assume EditOrderModal.onSave will pass an object or keyed array.
-              // The provided EditOrderModal's handleSave has an issue. It's creating `newInventoryState` from `orderedItems`
-              // which have `itemKey`.
-              // Let's simplify: EditOrderModal `onSave` will pass the new *object* for the sublocation.
-
-              // Assuming `newOrderedItemsData` is actually the new `SubLocationInventory` object after reordering.
-              // This part is conceptually complex if `EditOrderModal` only gives an array.
-              // For this pass, I will assume the `EditOrderModal` is updated to pass back `SubLocationInventory`
-          }
-      });
-      // This assignment is simplified. The EditOrderModal should pass an object.
-      // For this pass, I will assume the EditOrderModal's onSave parameter is structured as { [itemKey: string]: InventoryItemData }
-      // This is a simplification for now.
-      // The EditOrderModal's handleSave needs to be updated to construct this object based on `orderedItems`.
-
-      (newInventory[topLevel] as any)[subLevel] = newOrderedItemsData; // THIS IS A SIMPLIFICATION
-      return newInventory;
-    });
   };
   
   const handleSaveOrderFromModal = (orderedSubLocationInventory: SubLocationInventory, topLevel: TopLevelLocationKey, subLevel: string) => {
@@ -828,7 +750,7 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
       ...prev,
       [topLvlKey]: {
         ...prev[topLvlKey],
-        [subLocKey as keyof typeof prev[TopLevelLocationKey]]: { // Type assertion
+        [subLocKey as keyof typeof prev[TopLevelLocationKey]]: { 
           ...(prev[topLvlKey] as any)[subLocKey],
           [itemKey]: { ...(prev[topLvlKey] as any)[subLocKey][itemKey], whole: newWhole }
         }
@@ -888,7 +810,7 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
                     <Button variant="outline" size="icon" onClick={() => handleItemWholeAdjustment(topLvlKey, subLocKey, itemKey, 1)} aria-label={`Increase ${formatItemName(itemKey)} whole quantity`} className="rounded-l-none h-10 w-10 flex-shrink-0"> <Plus className="h-4 w-4"/> </Button>
                 </div>
                 <div className="flex flex-col items-center w-full lg:w-40">
-                    <Label htmlFor={`${itemKey}-partial-slider`} className="text-xs font-medium text-slate-600 mb-1 text-center lg:text-left">Partial: ({itemData.partial}%)</Label>
+                    <Label htmlFor={`${topLvlKey}-${subLocKey}-${itemKey}-partial-slider`} className="text-xs font-medium text-slate-600 mb-1 text-center lg:text-left">Partial: ({itemData.partial}%)</Label>
                     <Slider
                         id={`${topLvlKey}-${subLocKey}-${itemKey}-partial-slider`}
                         min={0} max={100} step={10}
@@ -937,21 +859,6 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
           <CardDescription className="text-md sm:text-lg text-slate-500 pt-1">Journey Canyon LLC</CardDescription>
         </CardHeader>
         <CardContent className="px-2 sm:px-6">
-          <div className="flex flex-wrap gap-2 sm:gap-4 justify-center mb-6 sm:mb-8">
-            {(['inventory', 'vendors'] as const).map(view => (
-              <Button
-                key={view}
-                onClick={() => setActiveView(view)}
-                variant={activeView === view ? 'default' : 'outline'}
-                size="default" 
-                className="text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto flex-grow sm:flex-grow-0"
-              >
-                {view === 'inventory' ? 'Inventory Count' : 'Vendor Management'}
-              </Button>
-            ))}
-          </div>
-
-          {activeView === 'inventory' ? (
             <>
               <Tabs value={activeTopLevelLocation} onValueChange={(value) => setActiveTopLevelLocation(value as TopLevelLocationKey)} className="w-full mb-4">
                 <TabsList className="grid w-full grid-cols-3 h-auto">
@@ -1008,9 +915,6 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
                 ))}
               </Tabs>
             </>
-          ) : (
-            <VendorManagement vendors={vendors} />
-          )}
         </CardContent>
       </Card>
 
@@ -1061,6 +965,5 @@ const WeeklyInventoryPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default WeeklyInventoryPage;
-
 
     
