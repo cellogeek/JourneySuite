@@ -7,10 +7,10 @@ import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
-  ShoppingCart, ClipboardCheck, ListPlus, ListChecks, Landmark
+  ShoppingCart, ClipboardCheck, ListPlus, ListChecks, Landmark, Tags // Added Tags
 } from 'lucide-react';
 // Firebase auth is not used for login/logout in this bypassed state, but db might be.
-// import { auth } from '@/lib/firebase'; 
+// import { auth } from '@/lib/firebase';
 // import { type User, signInWithEmailAndPassword, type UserCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import type { User } from 'firebase/auth'; // Keep User type for mock
 
@@ -24,11 +24,12 @@ import CheckWriterPage from '@/components/pages/CheckWriterPage';
 import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
 import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
 import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
+import LabelPrinterPage from '@/components/pages/LabelPrinterPage'; // Added LabelPrinterPage
 import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
 import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage';
 import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage';
 import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage';
-import DebtTrackerPage from '@/components/pages/DebtTrackerPage'; // Added DebtTrackerPage
+import DebtTrackerPage from '@/components/pages/DebtTrackerPage';
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -131,10 +132,11 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Financial & Clerical',
     items: [
       { id: 'financial_dashboard', name: 'Financial Dashboard', icon: LayoutGrid, title: 'Financial Overview', description: "View key financial metrics, sales reports, and expense tracking.", component: GenericPlaceholderPage },
-      { id: 'debt_tracker', name: 'Debt Tracker', icon: Landmark, title: 'Debt Tracker', description: "Manage and monitor all company debts.", component: DebtTrackerPage }, // Added Debt Tracker
+      { id: 'debt_tracker', name: 'Debt Tracker', icon: Landmark, title: 'Debt Tracker', description: "Manage and monitor all company debts.", component: DebtTrackerPage },
       { id: 'sales_tax_runner', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Runner', description: "Calculate and prepare sales tax reports for remittance.", component: SalesTaxRunnerPage },
       { id: 'check_writer', name: 'Check Printer', icon: Printer, title: 'Check Printer', description: "Generate and print checks for vendors and other payees.", component: CheckWriterPage },
       { id: 'envelope_printer', name: 'Envelope Printer', icon: Mail, title: 'Envelope Printer', description: "Design and print #10 envelopes or simple name-only envelopes.", component: EnvelopePrinterPage },
+      { id: 'label_printer', name: 'Label Printer', icon: Tags, title: 'Label Printer', description: "Generate and print 6x4 labels.", component: LabelPrinterPage }, // Added Label Printer
       { id: 'analytics', name: 'Data Analytics', icon: BarChart3, title: 'Data Analytics', description: "Analyze sales trends, customer behavior, and operational efficiency.", component: GenericPlaceholderPage },
     ],
   },
@@ -153,8 +155,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activePageId, setActivePageId] = useState<string>('dashboard');
-  const [currentUser, setCurrentUser] = useState<User | null>(MOCK_USER); 
-  const [loadingAuth, setLoadingAuth] = useState(false); 
+  const [currentUser, setCurrentUser] = useState<User | null>(MOCK_USER);
+  const [loadingAuth, setLoadingAuth] = useState(false);
   const [activePurchaseOrder, setActivePurchaseOrder] = useState<PurchaseOrder | null>(null);
 
   const getActivePage = (): NavItemStructure | undefined => {
@@ -164,6 +166,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
     const firstGroup = navGroupsData[0];
     if (firstGroup && firstGroup.items.length > 0) {
+        // setActivePageId(firstGroup.items[0].id); // Set to default if current is invalid
         return firstGroup.items[0];
     }
     return undefined;
@@ -189,4 +192,3 @@ export const useAppContext = () => {
   }
   return context;
 };
-
