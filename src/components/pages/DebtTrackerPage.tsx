@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Landmark, Edit, Trash2, PlusCircle, FileDown, Calculator, UploadCloud, FileArchive, CalendarIcon, Search
+  Landmark, Edit, Trash2, PlusCircle, FileDown, Calculator, UploadCloud, FileArchive, CalendarIcon, Search, List
 } from 'lucide-react';
 
 // TODO: Consider using react-hook-form for more robust form handling in the future.
@@ -34,17 +34,16 @@ interface DebtEntry {
   paymentFrequency: 'Monthly' | 'Bi-Weekly' | 'Weekly' | 'Annually' | 'Other';
   interestRate?: number; // Annual percentage rate
   termMonths?: number; // For term loans/mortgages
-  // Calculated fields (stubs for now)
   remainingBalance: number;
   assumedPayoffDate?: string;
-  statements?: Statement[]; // Array of associated statements
+  statements?: Statement[];
 }
 
 interface Statement {
   id: string;
   fileName: string;
-  uploadDate: string;
-  statementDate: string; // Date of the statement period
+  uploadDate: string; // YYYY-MM-DD, when it was "uploaded" to the app
+  statementDate: string; // YYYY-MM-DD, the actual date on the statement (e.g., period end date)
   // TODO: Add file storage URL or reference once backend is implemented
 }
 
@@ -53,7 +52,9 @@ const initialDebts: DebtEntry[] = [
     id: 'debt1', name: 'Commercial Mortgage - Main St', type: 'Mortgage', securityType: 'Secured',
     startingBalance: 500000, startingDate: '2020-01-15', currentBalance: 450000, dueDate: '2050-01-15',
     paymentAmount: 2800, paymentFrequency: 'Monthly', interestRate: 3.5, termMonths: 360,
-    remainingBalance: 450000, assumedPayoffDate: '2050-01-15', statements: []
+    remainingBalance: 450000, assumedPayoffDate: '2050-01-15', statements: [
+        {id: 'stmt-ex1', fileName: 'Jan2024_Mortgage.pdf', uploadDate: '2024-02-01', statementDate: '2024-01-31'}
+    ]
   },
   {
     id: 'debt2', name: 'Equipment Loan - Espresso Machine', type: 'Term Loan', securityType: 'Secured',
@@ -90,10 +91,11 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
   const [formData, setFormData] = useState<Omit<DebtEntry, 'id' | 'remainingBalance' | 'statements'>>(defaultNewDebtEntry);
   const [selectedDebtsForPackage, setSelectedDebtsForPackage] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDebtForStatementDisplay, setSelectedDebtForStatementDisplay] = useState<DebtEntry | null>(null);
 
   // Statement upload states
   const [showStatementUploadDialog, setShowStatementUploadDialog] = useState(false);
-  const [statementFile, setStatementFile] = useState<File | null>(null);
+  const [statementFiles, setStatementFiles] = useState<FileList | null>(null);
   const [statementDate, setStatementDate] = useState<Date | undefined>(new Date());
   const [debtForStatement, setDebtForStatement] = useState<string>('');
 
@@ -150,7 +152,7 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
     const calculatedPayoffDate = formData.dueDate; // Stub
 
     if (editingDebt) {
-      setDebts(debts.map(d => d.id === editingDebt.id ? { ...editingDebt, ...formData, remainingBalance: calculatedRemainingBalance, assumedPayoffDate: calculatedPayoffDate } : d));
+      setDebts(debts.map(d => d.id === editingDebt.id ? { ...editingDebt, ...formData, remainingBalance: calculatedRemainingBalance, assumedPayoffDate: calculatedPayoffDate, statements: editingDebt.statements || [] } : d));
       toast({ title: "Debt Updated", description: `Successfully updated ${formData.name}.` });
     } else {
       const newDebt: DebtEntry = {
@@ -170,12 +172,16 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
 
   const handleEditDebt = (debt: DebtEntry) => {
     setEditingDebt(debt);
+    setSelectedDebtForStatementDisplay(debt); // Also set for statement display
     setShowFormDialog(true);
   };
 
   const handleDeleteDebt = (debtId: string) => {
     if (window.confirm("Are you sure you want to delete this debt entry?")) {
       setDebts(debts.filter(d => d.id !== debtId));
+      if (selectedDebtForStatementDisplay?.id === debtId) {
+        setSelectedDebtForStatementDisplay(null);
+      }
       toast({ title: "Debt Deleted", description: "Debt entry has been removed." });
     }
   };
@@ -192,35 +198,54 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
     }
     const packageDebts = debts.filter(d => selectedIds.includes(d.id));
     // TODO: Implement actual ZIP file generation and download
+    // This would involve:
+    // 1. Generating PDF/CSV for payoff schedules/amortization tables for each selected debt (if applicable).
+    // 2. Retrieving selected statement files (from URLs once backend storage is set up).
+    // 3. Using a library like JSZip to create a ZIP file in the browser.
+    // 4. Triggering the download of the ZIP file.
     console.log("Download Accounting Package for:", packageDebts.map(d => d.name));
     toast({ title: "Package Download Started (Stub)", description: `Preparing package for ${selectedIds.length} debt(s).` });
   };
 
   const handleUploadStatement = () => {
-    if (!statementFile || !debtForStatement || !statementDate) {
-      toast({ title: "Missing Information", description: "Please select a debt, provide a statement file, and set the statement date.", variant: "destructive" });
+    if (!statementFiles || statementFiles.length === 0 || !debtForStatement || !statementDate) {
+      toast({ title: "Missing Information", description: "Please select a debt, provide at least one statement file, and set the statement date.", variant: "destructive" });
       return;
     }
-    // TODO: Implement actual file upload to server/cloud storage
-    // TODO: Update the specific debt entry with the new statement metadata
-    setDebts(prevDebts => prevDebts.map(debt => {
-        if (debt.id === debtForStatement) {
-            const newStatement: Statement = {
-                id: `stmt-${Date.now()}`,
-                fileName: statementFile.name,
-                uploadDate: format(new Date(), "yyyy-MM-dd"),
-                statementDate: format(statementDate, "yyyy-MM-dd"),
-            };
-            return { ...debt, statements: [...(debt.statements || []), newStatement] };
-        }
-        return debt;
-    }));
+    
+    let updatedDebts = [...debts];
+    let filesProcessedCount = 0;
 
-    console.log("Upload Statement:", { debtId: debtForStatement, fileName: statementFile.name, statementDate: format(statementDate, "yyyy-MM-dd") });
-    toast({ title: "Statement Uploaded (Stub)", description: `${statementFile.name} associated with selected debt.` });
+    for (let i = 0; i < statementFiles.length; i++) {
+        const file = statementFiles[i];
+        updatedDebts = updatedDebts.map(debt => {
+            if (debt.id === debtForStatement) {
+                const newStatement: Statement = {
+                    id: `stmt-${Date.now()}-${i}`, // Ensure unique ID per file
+                    fileName: file.name,
+                    uploadDate: format(new Date(), "yyyy-MM-dd"),
+                    statementDate: format(statementDate, "yyyy-MM-dd"),
+                };
+                // TODO: Actual file upload logic will go here (e.g., to Firebase Storage)
+                // For now, we just add metadata to the state.
+                return { ...debt, statements: [...(debt.statements || []), newStatement] };
+            }
+            return debt;
+        });
+        filesProcessedCount++;
+    }
+    setDebts(updatedDebts);
+    
+    // Update selectedDebtForStatementDisplay if it's the one being modified
+    if (selectedDebtForStatementDisplay?.id === debtForStatement) {
+        setSelectedDebtForStatementDisplay(updatedDebts.find(d => d.id === debtForStatement) || null);
+    }
+
+    toast({ title: "Statements Processed (Stub)", description: `${filesProcessedCount} statement(s) associated with the selected debt.` });
     setShowStatementUploadDialog(false);
-    setStatementFile(null);
-    setDebtForStatement('');
+    setStatementFiles(null);
+    setDebtForStatement(''); // Reset association
+    // setStatementDate(new Date()); // Reset statement date or keep as is for next batch
   };
 
   const filteredDebts = useMemo(() => {
@@ -230,6 +255,10 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
       debt.type.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [debts, searchTerm]);
+
+  const handleSelectDebtForRow = (debt: DebtEntry) => {
+    setSelectedDebtForStatementDisplay(debt);
+  };
 
 
   return (
@@ -275,7 +304,7 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
                     checked={filteredDebts.length > 0 && filteredDebts.every(d => selectedDebtsForPackage[d.id])}
                     onCheckedChange={(checked) => {
                         const newSelection: Record<string, boolean> = {};
-                        if (checked) {
+                        if (checked === true) { // Explicitly check for true
                             filteredDebts.forEach(d => newSelection[d.id] = true);
                         }
                         setSelectedDebtsForPackage(newSelection);
@@ -294,8 +323,13 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
               </TableHeader>
               <TableBody>
                 {filteredDebts.length > 0 ? filteredDebts.map((debt) => (
-                  <TableRow key={debt.id} data-state={selectedDebtsForPackage[debt.id] ? "selected" : ""}>
-                    <TableCell>
+                  <TableRow 
+                    key={debt.id} 
+                    data-state={selectedDebtsForPackage[debt.id] ? "selected" : ""}
+                    onClick={() => handleSelectDebtForRow(debt)} // Select debt for statement display
+                    className="cursor-pointer hover:bg-slate-50"
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()} >
                       <Checkbox
                         checked={selectedDebtsForPackage[debt.id] || false}
                         onCheckedChange={(checked) => handlePackageSelection(debt.id, checked)}
@@ -310,8 +344,8 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
                     <TableCell>{debt.interestRate ? debt.interestRate.toFixed(2) : 'N/A'}</TableCell>
                     <TableCell>{debt.dueDate || 'N/A'}</TableCell>
                     <TableCell className="space-x-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEditDebt(debt)} aria-label={`Edit ${debt.name}`} className="h-8 w-8"><Edit className="h-4 w-4 text-sky-600" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteDebt(debt.id)} aria-label={`Delete ${debt.name}`} className="h-8 w-8"><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleEditDebt(debt);}} aria-label={`Edit ${debt.name}`} className="h-8 w-8"><Edit className="h-4 w-4 text-sky-600" /></Button>
+                      <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleDeleteDebt(debt.id);}} aria-label={`Delete ${debt.name}`} className="h-8 w-8"><Trash2 className="h-4 w-4 text-red-500" /></Button>
                     </TableCell>
                   </TableRow>
                 )) : (
@@ -327,21 +361,23 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-slate-800">Debt Tools & Actions</CardTitle>
-          <CardDescription>Actions for a selected debt. Select a debt from the table above.</CardDescription>
+          <CardDescription>Actions for a selected debt. Select a debt from the table above.
+            {selectedDebtForStatementDisplay && <span className="font-semibold text-sky-600 block mt-1">Selected: {selectedDebtForStatementDisplay.name}</span>}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button variant="outline" size="action" disabled={!Object.values(selectedDebtsForPackage).some(v => v)} onClick={() => console.log("Download Payoff Stub for:", Object.keys(selectedDebtsForPackage).filter(id => selectedDebtsForPackage[id]))}>
+            <Button variant="outline" size="action" disabled={!selectedDebtForStatementDisplay} onClick={() => console.log("Download Payoff Stub for:", selectedDebtForStatementDisplay?.name)}>
                 <FileDown size={18} className="mr-2" /> Download Payoff Schedule (PDF/CSV)
             </Button>
-            <Button variant="outline" size="action" disabled={!Object.values(selectedDebtsForPackage).some(v => v)} onClick={() => console.log("Download Amortization Stub for:", Object.keys(selectedDebtsForPackage).filter(id => selectedDebtsForPackage[id]))}>
+            <Button variant="outline" size="action" disabled={!selectedDebtForStatementDisplay || !['Mortgage', 'Term Loan'].includes(selectedDebtForStatementDisplay.type)} onClick={() => console.log("Download Amortization Stub for:", selectedDebtForStatementDisplay?.name)}>
                 <FileDown size={18} className="mr-2" /> Download Amortization Table (PDF/CSV)
             </Button>
           </div>
           <Card className="bg-slate-50/50 p-4">
             <CardTitle className="text-md font-semibold text-slate-700 mb-2 flex items-center"><Calculator size={18} className="mr-2 text-slate-500"/>Principal & Interest Calculation</CardTitle>
             {/* TODO: Date range pickers and P&I display logic */}
-            <p className="text-sm text-slate-500">Date range selection and P&I display will be implemented here.</p>
+            <p className="text-sm text-slate-500">Date range selection and P&I display will be implemented here. Enable if a debt is selected.</p>
           </Card>
         </CardContent>
       </Card>
@@ -350,13 +386,29 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-slate-800">Manage Statements</CardTitle>
+           <CardDescription>
+            {selectedDebtForStatementDisplay ? `Statements for: ${selectedDebtForStatementDisplay.name}` : "Select a debt from the table to view/manage its statements."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => setShowStatementUploadDialog(true)} size="action" variant="outline">
-            <UploadCloud size={18} className="mr-2" /> Upload New Statement
+          <Button onClick={() => setShowStatementUploadDialog(true)} size="action" variant="outline" className="mb-4">
+            <UploadCloud size={18} className="mr-2" /> Upload New Statement(s)
           </Button>
-           {/* TODO: Display list of uploaded statements for selected debt, allow download/delete */}
-           <p className="text-sm text-slate-500 mt-4">List of uploaded statements for the selected debt will appear here.</p>
+            {selectedDebtForStatementDisplay && selectedDebtForStatementDisplay.statements && selectedDebtForStatementDisplay.statements.length > 0 ? (
+                <div className="space-y-2 max-h-60 overflow-y-auto border p-3 rounded-md bg-slate-50/30">
+                    {selectedDebtForStatementDisplay.statements.map(stmt => (
+                        <div key={stmt.id} className="p-2 border-b border-brand-slate-200/50 text-sm">
+                            <p className="font-medium text-slate-700">{stmt.fileName}</p>
+                            <p className="text-xs text-slate-500">Statement Date: {stmt.statementDate} (Uploaded: {stmt.uploadDate})</p>
+                            {/* TODO: Add download/delete icons for each statement */}
+                        </div>
+                    ))}
+                </div>
+            ) : selectedDebtForStatementDisplay ? (
+                 <p className="text-sm text-slate-500 mt-4">No statements uploaded for {selectedDebtForStatementDisplay.name} yet.</p>
+            ) : (
+                 <p className="text-sm text-slate-500 mt-4">Select a debt from the table to view its statements.</p>
+            )}
         </CardContent>
       </Card>
 
@@ -414,7 +466,7 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
                             <CalendarIcon className="mr-2 h-4 w-4" /> {formData.startingDate ? format(new Date(formData.startingDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={new Date(formData.startingDate + 'T00:00:00')} onSelect={(date) => handleDateChange('startingDate', date)} initialFocus /></PopoverContent>
+                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.startingDate ? new Date(formData.startingDate + 'T00:00:00') : undefined} onSelect={(date) => handleDateChange('startingDate', date)} initialFocus /></PopoverContent>
                 </Popover>
             </div>
             <div><Label htmlFor="currentBalance">Current Balance ($)</Label><Input id="currentBalance" name="currentBalance" type="number" value={formData.currentBalance} onChange={handleInputChange} placeholder="e.g., 450000" /></div>
@@ -454,8 +506,8 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
       <Dialog open={showStatementUploadDialog} onOpenChange={setShowStatementUploadDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Upload Statement</DialogTitle>
-            <DialogDescription>Upload a statement and associate it with a debt account and period.</DialogDescription>
+            <DialogTitle>Upload Statement(s)</DialogTitle>
+            <DialogDescription>Select files, associate them with a debt account, and set the statement date.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
@@ -479,13 +531,30 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
                 </Popover>
             </div>
             <div>
-                <Label htmlFor="statementFile">Statement File (PDF, CSV, etc.)</Label>
-                <Input id="statementFile" type="file" onChange={(e) => setStatementFile(e.target.files ? e.target.files[0] : null)} />
+                <Label htmlFor="statementFile">Statement File(s) (PDF, CSV, etc.)</Label>
+                <Input 
+                    id="statementFile" 
+                    type="file" 
+                    multiple // Allow multiple file selection
+                    onChange={(e) => setStatementFiles(e.target.files)} 
+                />
             </div>
+            {statementFiles && statementFiles.length > 0 && (
+                <div className="mt-2 space-y-1 max-h-32 overflow-y-auto border p-2 rounded-md">
+                    <Label className="text-xs font-medium text-slate-500">Selected files:</Label>
+                    {Array.from(statementFiles).map((file, index) => (
+                        <div key={index} className="text-xs text-slate-700 bg-slate-100 p-1 rounded-sm truncate">
+                           <List size={12} className="inline mr-1.5" /> {file.name}
+                        </div>
+                    ))}
+                </div>
+            )}
           </div>
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-            <Button type="button" onClick={handleUploadStatement}>Upload and Associate</Button>
+            <Button type="button" onClick={handleUploadStatement} disabled={!statementFiles || statementFiles.length === 0 || !debtForStatement || !statementDate}>
+                Upload and Associate
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -496,3 +565,4 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
 
 export default DebtTrackerPage;
 
+    
