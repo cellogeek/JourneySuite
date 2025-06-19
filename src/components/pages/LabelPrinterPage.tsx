@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Printer, Tags, User, FileText } from 'lucide-react'; // Added Tags icon and FileText
+import { Printer, Tags, User, FileText } from 'lucide-react'; 
 import { useToast } from "@/hooks/use-toast";
 
 const JSPDF_SCRIPT_URL_LP = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -24,11 +24,7 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
     }
     // Check if another component might have already added the script
     if (document.querySelector(`script[src="${JSPDF_SCRIPT_URL_LP}"]`)) {
-        // If script tag exists, jsPDF might still be loading.
-        // We can rely on an interval check or assume onload will fire.
-        // For simplicity, if tag exists, assume it will handle loading.
-        // A more robust solution might use a global flag window.jsPDFLoaded = true
-        if ((window as any).jspdf) setIsPdfLibReady(true); // Check again in case it loaded fast
+        if ((window as any).jspdf) setIsPdfLibReady(true);
         return;
     }
 
@@ -49,10 +45,6 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
     };
     document.body.appendChild(script);
     
-    // Cleanup function to remove the script if the component unmounts
-    // This is optional and depends on whether you want the script to persist globally
-    // For shared libraries like jsPDF, it's often fine to leave it.
-    // return () => { if (script.parentNode) script.parentNode.removeChild(script); };
   }, [toast]);
 
 
@@ -132,23 +124,18 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
     setShowPreview(true);
 
     const { jsPDF } = (window as any).jspdf;
-    // Create a new jsPDF instance: orientation landscape, unit inches, format [width, height]
     const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [6, 4] });
 
     doc.setFont('helvetica', 'bold');
-    // Adjust font size for PDF - jsPDF uses points. 2.75rem is roughly 44px. 1in = 72pt.
-    // A 6in wide label, text max width 90% = 5.4in.
-    // This is a rough approximation, may need fine-tuning.
     const text = labelText.trim();
-    let fontSize = 72; // Start with a large font size (72pt = 1 inch high)
+    let fontSize = 60; // Reduced initial font size for adaptive scaling from 72 to 60
     doc.setFontSize(fontSize);
     
-    // Reduce font size until text fits within ~90% of 6 inches width and ~80% of 4 inches height
     const maxWidthInches = 6 * 0.9;
     const maxHeightInches = 4 * 0.8;
 
     let textWidth = doc.getStringUnitWidth(text) * fontSize / doc.internal.scaleFactor;
-    let textHeight = doc.getTextDimensions(text).h / 72; // Convert points to inches
+    let textHeight = doc.getTextDimensions(text).h / 72; 
 
     while ((textWidth > maxWidthInches || textHeight > maxHeightInches) && fontSize > 10) {
         fontSize -= 2;
@@ -157,11 +144,10 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
         textHeight = doc.getTextDimensions(text).h / 72;
     }
     
-    // Center the text
     const xOffset = (6 - textWidth) / 2;
-    const yOffset = (4 + textHeight * 0.35) / 2; // Adjust yOffset for better vertical centering for most text
+    const yOffset = (4 + textHeight * 0.35) / 2; 
 
-    doc.text(text, xOffset, yOffset, { align: 'left' }); // jsPDF text alignment from (x,y) as top-left
+    doc.text(text, xOffset, yOffset, { align: 'left' }); 
 
     doc.save(`label-${text.replace(/[^a-zA-Z0-9]/g, '_') || 'generated'}.pdf`);
   };
@@ -242,4 +228,3 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default LabelPrinterPage;
-
