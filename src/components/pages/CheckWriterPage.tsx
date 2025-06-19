@@ -62,6 +62,8 @@ interface RecurringPayee {
     memo: string;
 }
 
+const JSPDF_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+
 const CheckWriterPage = ({ pageId }: { pageId: string }) => {
     const [checkData, setCheckData] = useState<CheckData>({
         payee: '',
@@ -80,17 +82,38 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
     const [isPdfLibReady, setIsPdfLibReady] = useState(false);
 
     useEffect(() => {
-        // Ensure jsPDF is typed correctly if possible, or use 'any' if types are not available/installed
         if ((window as any).jspdf) {
             setIsPdfLibReady(true);
             return;
         }
+        if (document.querySelector(`script[src="${JSPDF_SCRIPT_URL}"]`)) {
+            // Script tag already exists, jsPDF might still be loading
+            // We can rely on an interval check or assume onload will fire for existing script
+            // For simplicity, if tag exists, assume it will handle loading.
+            // An alternative is to add a global flag that script.onload sets.
+            if ((window as any).jspdf) setIsPdfLibReady(true); // Check again in case it loaded fast
+            return;
+        }
         const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script.src = JSPDF_SCRIPT_URL;
         script.async = true;
-        script.onload = () => setIsPdfLibReady(true);
+        script.onload = () => {
+            setIsPdfLibReady(true);
+            console.log("jsPDF loaded for CheckWriterPage");
+        };
+        script.onerror = () => {
+            console.error("Failed to load jsPDF script for CheckWriterPage.");
+            // Optionally set an error state here to inform the user
+        };
         document.body.appendChild(script);
-        return () => { if (script.parentNode) script.parentNode.removeChild(script); };
+        
+        return () => { 
+            // It's generally not recommended to remove scripts that might be shared or used by other components
+            // unless you have a more sophisticated script loading/management system.
+            // If this component is the *only* one loading it, then removal is safer.
+            // For now, we'll leave it, as EnvelopePrinter also uses it.
+            // if (script.parentNode) script.parentNode.removeChild(script); 
+        };
     }, []);
 
     useEffect(() => {
@@ -128,7 +151,7 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
 
     const generatePdf = () => {
         if (!isPdfLibReady || !(window as any).jspdf) {
-            alert("PDF library is not ready yet.");
+            alert("PDF library is not ready yet. Please wait a moment and try again.");
             return;
         }
         const { jsPDF } = (window as any).jspdf;
@@ -150,37 +173,30 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
         
         const memoLineStartX = memoX - (1/3), memoLineEndX = (memoX + 4.5) - (1/3) - (1/4), amountWordsLineEndX = (8.5 - 0.5) - (1/3);
 
-        // Date formatting: Ensure the date string from input is correctly parsed
-        const inputDate = new Date(checkData.date + 'T00:00:00'); // Assume local time if not specified
+        const inputDate = new Date(checkData.date + 'T00:00:00'); 
         const formattedDate = `${inputDate.getMonth() + 1}/${inputDate.getDate()}/${inputDate.getFullYear()}`;
 
         doc.setLineWidth(0.015);
 
-        // DATE
         doc.setFontSize(10);
         doc.text('DATE', dateLabelX, dateY);
         doc.text(formattedDate, dateX, dateY);
         doc.line(dateLabelX + doc.getTextWidth('DATE'), dateY + 0.05, dateX + doc.getTextWidth(formattedDate) + (1/3), dateY + 0.05);
 
-        // PAYEE
         doc.text(checkData.payee.toUpperCase(), payeeX, payeeY);
-        doc.line(payeeX, payeeY + 0.05, payeeX + 5.0, payeeY + 0.05); // Payee line
+        doc.line(payeeX, payeeY + 0.05, payeeX + 5.0, payeeY + 0.05); 
 
-        // AMOUNT (NUMERIC)
         doc.setFontSize(11);
         doc.text(`${parseFloat(checkData.amount || "0").toFixed(2)}`, amountTextX, payeeY);
         doc.setFontSize(10);
-        doc.rect(amountBoxX, amountBoxY, 1.2, amountBoxHeight, 'S'); // Amount box
+        doc.rect(amountBoxX, amountBoxY, 1.2, amountBoxHeight, 'S'); 
 
-        // AMOUNT (WORDS)
         doc.text(amountInWords, amountWordsX, amountWordsY);
-        doc.line(amountWordsX, amountWordsY + 0.05, amountWordsLineEndX, amountWordsY + 0.05); // Amount in words line
+        doc.line(amountWordsX, amountWordsY + 0.05, amountWordsLineEndX, amountWordsY + 0.05); 
 
-        // MEMO
         doc.text(checkData.memo.toUpperCase(), memoX, memoY);
-        doc.line(memoLineStartX, memoY + 0.05, memoLineEndX, memoY + 0.05); // Memo line
+        doc.line(memoLineStartX, memoY + 0.05, memoLineEndX, memoY + 0.05); 
 
-        // VOID TEXT
         doc.setFontSize(8);
         doc.text('VOID AFTER 60 DAYS', voidX, voidY, { align: 'center' });
         
@@ -258,7 +274,7 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
                         <CardTitle className="text-2xl font-bold text-slate-900">Recurring Checks</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ScrollArea className="h-[360px] pr-3"> {/* Adjusted height and added padding for scrollbar */}
+                        <ScrollArea className="h-[360px] pr-3">
                             <div className="space-y-3">
                                 {recurringPayees.length > 0 ? recurringPayees.map(p => (
                                     <Card key={p.id} className="bg-white/60 backdrop-blur-lg p-4 rounded-xl border shadow-md hover:shadow-sky-500/10 transition-shadow">
