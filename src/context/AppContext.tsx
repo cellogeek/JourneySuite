@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
-  ShoppingCart, ClipboardCheck, ListPlus, ListChecks
+  ShoppingCart, ClipboardCheck, ListPlus, ListChecks, Landmark
 } from 'lucide-react';
 // Firebase auth is not used for login/logout in this bypassed state, but db might be.
 // import { auth } from '@/lib/firebase'; 
@@ -28,6 +28,7 @@ import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
 import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage';
 import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage';
 import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage';
+import DebtTrackerPage from '@/components/pages/DebtTrackerPage'; // Added DebtTrackerPage
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
 
 
@@ -72,8 +73,6 @@ interface AppContextType {
   getActivePage: () => NavItemStructure | undefined;
   currentUser: User | null; // Will be a mock user
   loadingAuth: boolean; // Will be false
-  // devLogin: (email: string, pass: string) => Promise<UserCredential | void>; // Removed
-  // signInWithGoogle: () => Promise<void>; // Removed
   activePurchaseOrder: PurchaseOrder | null;
   setActivePurchaseOrder: (po: PurchaseOrder | null) => void;
 }
@@ -132,6 +131,7 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Financial & Clerical',
     items: [
       { id: 'financial_dashboard', name: 'Financial Dashboard', icon: LayoutGrid, title: 'Financial Overview', description: "View key financial metrics, sales reports, and expense tracking.", component: GenericPlaceholderPage },
+      { id: 'debt_tracker', name: 'Debt Tracker', icon: Landmark, title: 'Debt Tracker', description: "Manage and monitor all company debts.", component: DebtTrackerPage }, // Added Debt Tracker
       { id: 'sales_tax_runner', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Runner', description: "Calculate and prepare sales tax reports for remittance.", component: SalesTaxRunnerPage },
       { id: 'check_writer', name: 'Check Printer', icon: Printer, title: 'Check Printer', description: "Generate and print checks for vendors and other payees.", component: CheckWriterPage },
       { id: 'envelope_printer', name: 'Envelope Printer', icon: Mail, title: 'Envelope Printer', description: "Design and print #10 envelopes or simple name-only envelopes.", component: EnvelopePrinterPage },
@@ -153,40 +153,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activePageId, setActivePageId] = useState<string>('dashboard');
-  const [currentUser, setCurrentUser] = useState<User | null>(MOCK_USER); // Set mock user by default
-  const [loadingAuth, setLoadingAuth] = useState(false); // Set to false by default
+  const [currentUser, setCurrentUser] = useState<User | null>(MOCK_USER); 
+  const [loadingAuth, setLoadingAuth] = useState(false); 
   const [activePurchaseOrder, setActivePurchaseOrder] = useState<PurchaseOrder | null>(null);
-
-  // Firebase auth listener logic is removed for bypass.
-  // Original useEffect for auth is commented out or removed.
-  /*
-  useEffect(() => {
-    const initializeAuth = async () => {
-      // ... original auth logic ...
-    };
-    const unsubscribePromise = initializeAuth();
-    return () => {
-      unsubscribePromise.then(unsubscribe => {
-        if (unsubscribe) {
-          console.log("AppProvider: Cleaning up onAuthStateChanged listener.");
-          unsubscribe();
-        }
-      });
-    };
-  }, []);
-  */
-
-  // devLogin and signInWithGoogle are removed as auth is bypassed.
-  /*
-  const devLogin = async (email: string, pass: string): Promise<UserCredential | void> => { ... };
-  const signInWithGoogle = async (): Promise<void> => { ... };
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      (window as any).devLogin = devLogin;
-      // ...
-    }
-  }, [devLogin]);
-  */
 
   const getActivePage = (): NavItemStructure | undefined => {
     for (const group of navGroupsData) {
@@ -220,3 +189,4 @@ export const useAppContext = () => {
   }
   return context;
 };
+
