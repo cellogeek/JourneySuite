@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -15,11 +15,22 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { analyzeStatement, type AnalyzeStatementInput, type AnalyzeStatementOutput } from '@/ai/flows/analyze-statement-flow';
+import { Progress } from "@/components/ui/progress";
 import {
-  Landmark, Edit, Trash2, PlusCircle, FileDown, Calculator, UploadCloud, FileArchive, CalendarIcon, Search, List
+  Landmark, Edit, Trash2, PlusCircle, FileDown, Calculator, UploadCloud, FileArchive, CalendarIcon, Search, List, Brain, RefreshCw, Sparkles, Check, AlertTriangle, Loader2
 } from 'lucide-react';
 
 // TODO: Consider using react-hook-form for more robust form handling in the future.
+
+interface Statement {
+  id: string;
+  fileName: string;
+  uploadDate: string; // YYYY-MM-DD, when it was "uploaded" to the app
+  statementDate: string; // YYYY-MM-DD, the actual date on the statement (e.g., period end date)
+  // TODO: Add file storage URL or reference once backend is implemented
+  aiSuggested?: boolean; // Flag if this statement was associated via AI
+}
 
 interface DebtEntry {
   id: string;
@@ -37,14 +48,6 @@ interface DebtEntry {
   remainingBalance: number;
   assumedPayoffDate?: string;
   statements?: Statement[];
-}
-
-interface Statement {
-  id: string;
-  fileName: string;
-  uploadDate: string; // YYYY-MM-DD, when it was "uploaded" to the app
-  statementDate: string; // YYYY-MM-DD, the actual date on the statement (e.g., period end date)
-  // TODO: Add file storage URL or reference once backend is implemented
 }
 
 const initialDebts: DebtEntry[] = [
@@ -82,6 +85,22 @@ const defaultNewDebtEntry: Omit<DebtEntry, 'id' | 'remainingBalance' | 'statemen
   paymentFrequency: 'Monthly', interestRate: 0, termMonths: 0,
 };
 
+// Interface for AI-analyzed file data
+interface AnalyzedFile {
+  file: File;
+  originalIndex: number; // To keep track of the file if list reorders
+  previewUrl?: string; // For image previews, if applicable
+  suggestedDebtId: string | null;
+  suggestedStatementDate: string | null;
+  ocrTextSnippet?: string;
+  confidence?: number;
+  // User overrides
+  actualDebtId: string;
+  actualStatementDate?: Date; // Use Date object for DatePicker
+  processingStatus: 'pending' | 'analyzing' | 'analyzed' | 'error' | 'saved';
+  errorMessage?: string;
+}
+
 
 const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
   const { toast } = useToast();
@@ -93,27 +112,22 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDebtForStatementDisplay, setSelectedDebtForStatementDisplay] = useState<DebtEntry | null>(null);
 
-  // Statement upload states
+  // Statement upload dialog & AI processing states
   const [showStatementUploadDialog, setShowStatementUploadDialog] = useState(false);
-  const [statementFiles, setStatementFiles] = useState<FileList | null>(null);
-  const [statementDate, setStatementDate] = useState<Date | undefined>(new Date());
-  const [debtForStatement, setDebtForStatement] = useState<string>('');
+  const [rawSelectedFiles, setRawSelectedFiles] = useState<FileList | null>(null);
+  const [analyzedFiles, setAnalyzedFiles] = useState<AnalyzedFile[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [overallProgress, setOverallProgress] = useState(0);
 
 
   useEffect(() => {
     if (editingDebt) {
       setFormData({
-        name: editingDebt.name,
-        type: editingDebt.type,
-        securityType: editingDebt.securityType,
-        startingBalance: editingDebt.startingBalance,
-        startingDate: editingDebt.startingDate,
-        currentBalance: editingDebt.currentBalance,
-        dueDate: editingDebt.dueDate,
-        paymentAmount: editingDebt.paymentAmount,
-        paymentFrequency: editingDebt.paymentFrequency,
-        interestRate: editingDebt.interestRate,
-        termMonths: editingDebt.termMonths,
+        name: editingDebt.name, type: editingDebt.type, securityType: editingDebt.securityType,
+        startingBalance: editingDebt.startingBalance, startingDate: editingDebt.startingDate,
+        currentBalance: editingDebt.currentBalance, dueDate: editingDebt.dueDate,
+        paymentAmount: editingDebt.paymentAmount, paymentFrequency: editingDebt.paymentFrequency,
+        interestRate: editingDebt.interestRate, termMonths: editingDebt.termMonths,
         assumedPayoffDate: editingDebt.assumedPayoffDate
       });
     } else {
@@ -131,7 +145,7 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value as any }));
   };
 
   const handleDateChange = (name: string, date?: Date) => {
@@ -141,47 +155,35 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
   };
 
   const handleSaveDebt = () => {
-    // TODO: Add validation
     if (!formData.name) {
         toast({ title: "Validation Error", description: "Debt name is required.", variant: "destructive" });
         return;
     }
-
-    // TODO: Implement actual remaining balance and payoff date calculation
-    const calculatedRemainingBalance = formData.currentBalance; // Stub
-    const calculatedPayoffDate = formData.dueDate; // Stub
+    const calculatedRemainingBalance = formData.currentBalance; 
+    const calculatedPayoffDate = formData.dueDate; 
 
     if (editingDebt) {
       setDebts(debts.map(d => d.id === editingDebt.id ? { ...editingDebt, ...formData, remainingBalance: calculatedRemainingBalance, assumedPayoffDate: calculatedPayoffDate, statements: editingDebt.statements || [] } : d));
       toast({ title: "Debt Updated", description: `Successfully updated ${formData.name}.` });
     } else {
       const newDebt: DebtEntry = {
-        id: `debt${Date.now()}`, // Simple unique ID for mockup
-        ...formData,
-        remainingBalance: calculatedRemainingBalance,
-        assumedPayoffDate: calculatedPayoffDate,
-        statements: []
+        id: `debt${Date.now()}`, ...formData,
+        remainingBalance: calculatedRemainingBalance, assumedPayoffDate: calculatedPayoffDate, statements: []
       };
       setDebts([...debts, newDebt]);
       toast({ title: "Debt Added", description: `Successfully added ${newDebt.name}.` });
     }
-    setShowFormDialog(false);
-    setEditingDebt(null);
-    setFormData(defaultNewDebtEntry);
+    setShowFormDialog(false); setEditingDebt(null); setFormData(defaultNewDebtEntry);
   };
 
   const handleEditDebt = (debt: DebtEntry) => {
-    setEditingDebt(debt);
-    setSelectedDebtForStatementDisplay(debt); // Also set for statement display
-    setShowFormDialog(true);
+    setEditingDebt(debt); setSelectedDebtForStatementDisplay(debt); setShowFormDialog(true);
   };
 
   const handleDeleteDebt = (debtId: string) => {
     if (window.confirm("Are you sure you want to delete this debt entry?")) {
       setDebts(debts.filter(d => d.id !== debtId));
-      if (selectedDebtForStatementDisplay?.id === debtId) {
-        setSelectedDebtForStatementDisplay(null);
-      }
+      if (selectedDebtForStatementDisplay?.id === debtId) setSelectedDebtForStatementDisplay(null);
       toast({ title: "Debt Deleted", description: "Debt entry has been removed." });
     }
   };
@@ -197,56 +199,139 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
       return;
     }
     const packageDebts = debts.filter(d => selectedIds.includes(d.id));
-    // TODO: Implement actual ZIP file generation and download
-    // This would involve:
-    // 1. Generating PDF/CSV for payoff schedules/amortization tables for each selected debt (if applicable).
-    // 2. Retrieving selected statement files (from URLs once backend storage is set up).
-    // 3. Using a library like JSZip to create a ZIP file in the browser.
-    // 4. Triggering the download of the ZIP file.
     console.log("Download Accounting Package for:", packageDebts.map(d => d.name));
     toast({ title: "Package Download Started (Stub)", description: `Preparing package for ${selectedIds.length} debt(s).` });
   };
 
-  const handleUploadStatement = () => {
-    if (!statementFiles || statementFiles.length === 0 || !debtForStatement || !statementDate) {
-      toast({ title: "Missing Information", description: "Please select a debt, provide at least one statement file, and set the statement date.", variant: "destructive" });
+  // New handlers for AI-powered batch upload
+  const handleFileSelectionForAnalysis = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRawSelectedFiles(event.target.files);
+    if (event.target.files) {
+      const filesArray = Array.from(event.target.files).map((file, index) => ({
+        file,
+        originalIndex: index,
+        suggestedDebtId: null,
+        suggestedStatementDate: null,
+        actualDebtId: '',
+        actualStatementDate: undefined,
+        processingStatus: 'pending' as 'pending',
+      }));
+      setAnalyzedFiles(filesArray);
+      setOverallProgress(0);
+    } else {
+      setAnalyzedFiles([]);
+    }
+  };
+
+  const readFileAsDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleAnalyzeFiles = async () => {
+    if (!analyzedFiles.length) {
+      toast({ title: "No Files", description: "Please select files to analyze.", variant: "destructive" });
       return;
     }
-    
-    let updatedDebts = [...debts];
-    let filesProcessedCount = 0;
+    setIsAnalyzing(true);
+    setOverallProgress(0);
 
-    for (let i = 0; i < statementFiles.length; i++) {
-        const file = statementFiles[i];
-        updatedDebts = updatedDebts.map(debt => {
-            if (debt.id === debtForStatement) {
-                const newStatement: Statement = {
-                    id: `stmt-${Date.now()}-${i}`, // Ensure unique ID per file
-                    fileName: file.name,
-                    uploadDate: format(new Date(), "yyyy-MM-dd"),
-                    statementDate: format(statementDate, "yyyy-MM-dd"),
-                };
-                // TODO: Actual file upload logic will go here (e.g., to Firebase Storage)
-                // For now, we just add metadata to the state.
-                return { ...debt, statements: [...(debt.statements || []), newStatement] };
-            }
-            return debt;
-        });
-        filesProcessedCount++;
-    }
-    setDebts(updatedDebts);
-    
-    // Update selectedDebtForStatementDisplay if it's the one being modified
-    if (selectedDebtForStatementDisplay?.id === debtForStatement) {
-        setSelectedDebtForStatementDisplay(updatedDebts.find(d => d.id === debtForStatement) || null);
-    }
+    const debtAccountInfo = debts.map(d => ({ id: d.id, name: d.name }));
+    let filesProcessed = 0;
 
-    toast({ title: "Statements Processed (Stub)", description: `${filesProcessedCount} statement(s) associated with the selected debt.` });
-    setShowStatementUploadDialog(false);
-    setStatementFiles(null);
-    setDebtForStatement(''); // Reset association
-    // setStatementDate(new Date()); // Reset statement date or keep as is for next batch
+    for (let i = 0; i < analyzedFiles.length; i++) {
+      const currentFileItem = analyzedFiles[i];
+      setAnalyzedFiles(prev => prev.map(f => f.originalIndex === currentFileItem.originalIndex ? { ...f, processingStatus: 'analyzing' } : f));
+      try {
+        // TODO: Actual OCR and file processing would happen here.
+        // For now, we simulate it. If it were a real image/PDF, we'd convert to data URI.
+        // const fileDataUri = await readFileAsDataURL(currentFileItem.file);
+        const fileDataUri = "data:text/plain;base64,c3R1YmJvZCBmaWxlIGNvbnRlbnQ="; // Placeholder
+
+        const input: AnalyzeStatementInput = {
+          fileDataUri,
+          fileName: currentFileItem.file.name,
+          existingDebtAccounts: debtAccountInfo,
+        };
+        // Simulate network delay for AI call
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+        const result: AnalyzeStatementOutput = await analyzeStatement(input); // Call Genkit flow
+
+        setAnalyzedFiles(prev => prev.map(f =>
+          f.originalIndex === currentFileItem.originalIndex ? {
+            ...f,
+            suggestedDebtId: result.suggestedDebtId,
+            suggestedStatementDate: result.suggestedStatementDate,
+            ocrTextSnippet: result.ocrTextSnippet,
+            confidence: result.confidence,
+            actualDebtId: result.suggestedDebtId || '',
+            actualStatementDate: result.suggestedStatementDate ? new Date(result.suggestedStatementDate + 'T00:00:00') : undefined, // Ensure date object for DatePicker
+            processingStatus: 'analyzed',
+          } : f
+        ));
+      } catch (error) {
+        console.error("Error analyzing file:", currentFileItem.file.name, error);
+        setAnalyzedFiles(prev => prev.map(f => f.originalIndex === currentFileItem.originalIndex ? { ...f, processingStatus: 'error', errorMessage: 'AI analysis failed' } : f));
+      }
+      filesProcessed++;
+      setOverallProgress(Math.round((filesProcessed / analyzedFiles.length) * 100));
+    }
+    setIsAnalyzing(false);
   };
+  
+  const handleAnalyzedFileFieldChange = (index: number, field: keyof AnalyzedFile, value: any) => {
+    setAnalyzedFiles(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
+  };
+
+  const handleSaveAnalyzedStatements = () => {
+    let statementsAddedCount = 0;
+    let updatedDebts = [...debts];
+
+    analyzedFiles.forEach(analyzedFile => {
+      if (analyzedFile.processingStatus === 'analyzed' && analyzedFile.actualDebtId && analyzedFile.actualStatementDate) {
+        updatedDebts = updatedDebts.map(debt => {
+          if (debt.id === analyzedFile.actualDebtId) {
+            const newStatement: Statement = {
+              id: `stmt-${Date.now()}-${analyzedFile.originalIndex}`,
+              fileName: analyzedFile.file.name,
+              uploadDate: format(new Date(), "yyyy-MM-dd"),
+              statementDate: format(analyzedFile.actualStatementDate!, "yyyy-MM-dd"),
+              aiSuggested: analyzedFile.suggestedDebtId === analyzedFile.actualDebtId && 
+                           analyzedFile.suggestedStatementDate === format(analyzedFile.actualStatementDate!, "yyyy-MM-dd"),
+            };
+            // TODO: Actual file upload logic to Firebase Storage or other backend
+            statementsAddedCount++;
+            return { ...debt, statements: [...(debt.statements || []), newStatement] };
+          }
+          return debt;
+        });
+      }
+    });
+
+    if (statementsAddedCount > 0) {
+      setDebts(updatedDebts);
+      // Update selectedDebtForStatementDisplay if its statements were modified
+      if (selectedDebtForStatementDisplay) {
+        const updatedSelectedDebt = updatedDebts.find(d => d.id === selectedDebtForStatementDisplay.id);
+        if (updatedSelectedDebt) setSelectedDebtForStatementDisplay(updatedSelectedDebt);
+      }
+      toast({ title: "Statements Saved", description: `${statementsAddedCount} statement(s) have been associated and (conceptually) uploaded.` });
+    } else {
+      toast({ title: "No Statements Saved", description: "No statements were ready to be saved. Ensure debt and date are selected for analyzed files.", variant: "destructive" });
+    }
+    
+    // Reset dialog state
+    setShowStatementUploadDialog(false);
+    setRawSelectedFiles(null);
+    setAnalyzedFiles([]);
+    setIsAnalyzing(false);
+    setOverallProgress(0);
+  };
+
 
   const filteredDebts = useMemo(() => {
     if (!searchTerm) return debts;
@@ -285,79 +370,46 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
                 <CardTitle className="text-xl font-semibold text-slate-800">Debt Overview</CardTitle>
                 <div className="relative w-full sm:w-auto sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                        type="search"
-                        placeholder="Search debts..."
-                        className="pl-10"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                    <Input type="search" placeholder="Search debts..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>
             </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-lg border border-brand-slate-200/80">
             <Table>
-              <TableHeader>
-                <TableRow>
+              <TableHeader><TableRow>
                   <TableHead className="w-[40px]"><Checkbox 
                     checked={filteredDebts.length > 0 && filteredDebts.every(d => selectedDebtsForPackage[d.id])}
                     onCheckedChange={(checked) => {
                         const newSelection: Record<string, boolean> = {};
-                        if (checked === true) { // Explicitly check for true
-                            filteredDebts.forEach(d => newSelection[d.id] = true);
-                        }
+                        if (checked === true) filteredDebts.forEach(d => newSelection[d.id] = true);
                         setSelectedDebtsForPackage(newSelection);
-                    }}
-                    aria-label="Select all debts for package"
-                  /></TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Current Balance</TableHead>
-                  <TableHead>Payment</TableHead>
-                  <TableHead>Frequency</TableHead>
-                  <TableHead>Rate (%)</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+                    }} aria-label="Select all debts for package"/>
+                  </TableHead>
+                  <TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>Current Balance</TableHead><TableHead>Payment</TableHead>
+                  <TableHead>Frequency</TableHead><TableHead>Rate (%)</TableHead><TableHead>Due Date</TableHead><TableHead>Actions</TableHead>
+              </TableRow></TableHeader>
               <TableBody>
                 {filteredDebts.length > 0 ? filteredDebts.map((debt) => (
-                  <TableRow 
-                    key={debt.id} 
-                    data-state={selectedDebtsForPackage[debt.id] ? "selected" : ""}
-                    onClick={() => handleSelectDebtForRow(debt)} // Select debt for statement display
-                    className="cursor-pointer hover:bg-slate-50"
-                  >
-                    <TableCell onClick={(e) => e.stopPropagation()} >
-                      <Checkbox
-                        checked={selectedDebtsForPackage[debt.id] || false}
-                        onCheckedChange={(checked) => handlePackageSelection(debt.id, checked)}
-                        aria-label={`Select ${debt.name}`}
-                      />
-                    </TableCell>
-                    <TableCell className="font-medium text-slate-700">{debt.name}</TableCell>
-                    <TableCell>{debt.type}</TableCell>
+                  <TableRow key={debt.id} data-state={selectedDebtsForPackage[debt.id] ? "selected" : ""} onClick={() => handleSelectDebtForRow(debt)} className="cursor-pointer hover:bg-slate-50">
+                    <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedDebtsForPackage[debt.id] || false} onCheckedChange={(checked) => handlePackageSelection(debt.id, checked)} aria-label={`Select ${debt.name}`}/></TableCell>
+                    <TableCell className="font-medium text-slate-700">{debt.name}</TableCell><TableCell>{debt.type}</TableCell>
                     <TableCell>${debt.currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                     <TableCell>${debt.paymentAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
-                    <TableCell>{debt.paymentFrequency}</TableCell>
-                    <TableCell>{debt.interestRate ? debt.interestRate.toFixed(2) : 'N/A'}</TableCell>
+                    <TableCell>{debt.paymentFrequency}</TableCell><TableCell>{debt.interestRate ? debt.interestRate.toFixed(2) : 'N/A'}</TableCell>
                     <TableCell>{debt.dueDate || 'N/A'}</TableCell>
                     <TableCell className="space-x-1">
                       <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleEditDebt(debt);}} aria-label={`Edit ${debt.name}`} className="h-8 w-8"><Edit className="h-4 w-4 text-sky-600" /></Button>
                       <Button variant="ghost" size="icon" onClick={(e) => {e.stopPropagation(); handleDeleteDebt(debt.id);}} aria-label={`Delete ${debt.name}`} className="h-8 w-8"><Trash2 className="h-4 w-4 text-red-500" /></Button>
                     </TableCell>
                   </TableRow>
-                )) : (
-                  <TableRow><TableCell colSpan={9} className="text-center h-24">No debts match your search criteria, or no debts added yet.</TableCell></TableRow>
-                )}
+                )) : (<TableRow><TableCell colSpan={9} className="text-center h-24">No debts match your search criteria, or no debts added yet.</TableCell></TableRow>)}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Debt Actions & Calculations Section (Placeholder for specific debt) */}
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-slate-800">Debt Tools & Actions</CardTitle>
@@ -367,22 +419,16 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button variant="outline" size="action" disabled={!selectedDebtForStatementDisplay} onClick={() => console.log("Download Payoff Stub for:", selectedDebtForStatementDisplay?.name)}>
-                <FileDown size={18} className="mr-2" /> Download Payoff Schedule (PDF/CSV)
-            </Button>
-            <Button variant="outline" size="action" disabled={!selectedDebtForStatementDisplay || !['Mortgage', 'Term Loan'].includes(selectedDebtForStatementDisplay.type)} onClick={() => console.log("Download Amortization Stub for:", selectedDebtForStatementDisplay?.name)}>
-                <FileDown size={18} className="mr-2" /> Download Amortization Table (PDF/CSV)
-            </Button>
+            <Button variant="outline" size="action" disabled={!selectedDebtForStatementDisplay} onClick={() => console.log("Download Payoff Stub for:", selectedDebtForStatementDisplay?.name)}><FileDown size={18} className="mr-2" /> Download Payoff Schedule (PDF/CSV)</Button>
+            <Button variant="outline" size="action" disabled={!selectedDebtForStatementDisplay || !['Mortgage', 'Term Loan'].includes(selectedDebtForStatementDisplay?.type || '')} onClick={() => console.log("Download Amortization Stub for:", selectedDebtForStatementDisplay?.name)}><FileDown size={18} className="mr-2" /> Download Amortization Table (PDF/CSV)</Button>
           </div>
           <Card className="bg-slate-50/50 p-4">
             <CardTitle className="text-md font-semibold text-slate-700 mb-2 flex items-center"><Calculator size={18} className="mr-2 text-slate-500"/>Principal & Interest Calculation</CardTitle>
-            {/* TODO: Date range pickers and P&I display logic */}
             <p className="text-sm text-slate-500">Date range selection and P&I display will be implemented here. Enable if a debt is selected.</p>
           </Card>
         </CardContent>
       </Card>
 
-       {/* Statement Upload Section */}
       <Card>
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-slate-800">Manage Statements</CardTitle>
@@ -391,170 +437,140 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => setShowStatementUploadDialog(true)} size="action" variant="outline" className="mb-4">
-            <UploadCloud size={18} className="mr-2" /> Upload New Statement(s)
+          <Button onClick={() => { setShowStatementUploadDialog(true); setRawSelectedFiles(null); setAnalyzedFiles([]); setOverallProgress(0); }} size="action" variant="outline" className="mb-4">
+            <UploadCloud size={18} className="mr-2" /> Upload & Analyze New Statement(s)
           </Button>
             {selectedDebtForStatementDisplay && selectedDebtForStatementDisplay.statements && selectedDebtForStatementDisplay.statements.length > 0 ? (
                 <div className="space-y-2 max-h-60 overflow-y-auto border p-3 rounded-md bg-slate-50/30">
                     {selectedDebtForStatementDisplay.statements.map(stmt => (
                         <div key={stmt.id} className="p-2 border-b border-brand-slate-200/50 text-sm">
-                            <p className="font-medium text-slate-700">{stmt.fileName}</p>
+                            <p className="font-medium text-slate-700">{stmt.fileName} {stmt.aiSuggested && <Sparkles className="inline h-3 w-3 text-purple-500" title="AI Suggested Association" />}</p>
                             <p className="text-xs text-slate-500">Statement Date: {stmt.statementDate} (Uploaded: {stmt.uploadDate})</p>
-                            {/* TODO: Add download/delete icons for each statement */}
                         </div>
                     ))}
                 </div>
-            ) : selectedDebtForStatementDisplay ? (
-                 <p className="text-sm text-slate-500 mt-4">No statements uploaded for {selectedDebtForStatementDisplay.name} yet.</p>
-            ) : (
-                 <p className="text-sm text-slate-500 mt-4">Select a debt from the table to view its statements.</p>
-            )}
+            ) : selectedDebtForStatementDisplay ? ( <p className="text-sm text-slate-500 mt-4">No statements uploaded for {selectedDebtForStatementDisplay.name} yet.</p>
+            ) : ( <p className="text-sm text-slate-500 mt-4">Select a debt from the table to view its statements.</p> )}
         </CardContent>
       </Card>
 
-
-      {/* Download Accounting Package Section */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-slate-800">Accounting Package</CardTitle>
-          <CardDescription>Download selected statements and schedules for one or more accounts.</CardDescription>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-xl font-semibold text-slate-800">Accounting Package</CardTitle><CardDescription>Download selected statements and schedules for one or more accounts.</CardDescription></CardHeader>
         <CardContent>
-          <Button onClick={handleDownloadPackage} size="action" variant="default" disabled={Object.values(selectedDebtsForPackage).filter(v => v).length === 0}>
-            <FileArchive size={18} className="mr-2" /> Download Package
-          </Button>
+          <Button onClick={handleDownloadPackage} size="action" variant="default" disabled={Object.values(selectedDebtsForPackage).filter(v => v).length === 0}><FileArchive size={18} className="mr-2" /> Download Package</Button>
           <p className="text-xs text-slate-500 mt-2">Select debts from the table above to include them in the package.</p>
         </CardContent>
       </Card>
 
-
-      {/* Add/Edit Debt Dialog */}
       <Dialog open={showFormDialog} onOpenChange={(open) => { if (!open) { setShowFormDialog(false); setEditingDebt(null); setFormData(defaultNewDebtEntry); } else { setShowFormDialog(true); }}}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingDebt ? 'Edit Debt Entry' : 'Add New Debt Entry'}</DialogTitle>
-            <DialogDescription>
-              {editingDebt ? `Update details for ${editingDebt.name}.` : 'Enter the details for the new debt.'}
-            </DialogDescription>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{editingDebt ? 'Edit Debt Entry' : 'Add New Debt Entry'}</DialogTitle><DialogDescription>{editingDebt ? `Update details for ${editingDebt.name}.` : 'Enter the details for the new debt.'}</DialogDescription></DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
             <div><Label htmlFor="name">Debt Name/Description</Label><Input id="name" name="name" value={formData.name} onChange={handleInputChange} placeholder="e.g., Main St Building Mortgage" /></div>
             <div><Label htmlFor="type">Type of Debt</Label>
-              <Select name="type" value={formData.type} onValueChange={(value) => handleSelectChange('type', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Mortgage">Mortgage</SelectItem><SelectItem value="Line of Credit">Line of Credit</SelectItem>
-                  <SelectItem value="Term Loan">Term Loan</SelectItem><SelectItem value="Credit Card">Credit Card</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <Select name="type" value={formData.type} onValueChange={(value) => handleSelectChange('type', value)}><SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="Mortgage">Mortgage</SelectItem><SelectItem value="Line of Credit">Line of Credit</SelectItem><SelectItem value="Term Loan">Term Loan</SelectItem><SelectItem value="Credit Card">Credit Card</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
+              </Select></div>
             <div><Label htmlFor="securityType">Security Type</Label>
-              <Select name="securityType" value={formData.securityType} onValueChange={(value) => handleSelectChange('securityType', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Secured">Secured</SelectItem><SelectItem value="Unsecured">Unsecured</SelectItem>
-                  <SelectItem value="Partially Secured">Partially Secured</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <Select name="securityType" value={formData.securityType} onValueChange={(value) => handleSelectChange('securityType', value)}><SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="Secured">Secured</SelectItem><SelectItem value="Unsecured">Unsecured</SelectItem><SelectItem value="Partially Secured">Partially Secured</SelectItem></SelectContent>
+              </Select></div>
             <div><Label htmlFor="startingBalance">Starting Balance ($)</Label><Input id="startingBalance" name="startingBalance" type="number" value={formData.startingBalance} onChange={handleInputChange} placeholder="e.g., 500000" /></div>
             <div><Label htmlFor="startingDate">Starting Date</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.startingDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" /> {formData.startingDate ? format(new Date(formData.startingDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.startingDate ? new Date(formData.startingDate + 'T00:00:00') : undefined} onSelect={(date) => handleDateChange('startingDate', date)} initialFocus /></PopoverContent>
-                </Popover>
-            </div>
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.startingDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" /> {formData.startingDate ? format(new Date(formData.startingDate + 'T00:00:00'), "PPP") : <span>Pick a date</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.startingDate ? new Date(formData.startingDate + 'T00:00:00') : undefined} onSelect={(date) => handleDateChange('startingDate', date)} initialFocus /></PopoverContent></Popover></div>
             <div><Label htmlFor="currentBalance">Current Balance ($)</Label><Input id="currentBalance" name="currentBalance" type="number" value={formData.currentBalance} onChange={handleInputChange} placeholder="e.g., 450000" /></div>
             <div><Label htmlFor="interestRate">Interest Rate (Annual %)</Label><Input id="interestRate" name="interestRate" type="number" value={formData.interestRate || ''} onChange={handleInputChange} placeholder="e.g., 3.5" step="0.01"/></div>
             <div><Label htmlFor="paymentAmount">Payment Amount ($)</Label><Input id="paymentAmount" name="paymentAmount" type="number" value={formData.paymentAmount} onChange={handleInputChange} placeholder="e.g., 2800" /></div>
             <div><Label htmlFor="paymentFrequency">Payment Frequency</Label>
-              <Select name="paymentFrequency" value={formData.paymentFrequency} onValueChange={(value) => handleSelectChange('paymentFrequency', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Bi-Weekly">Bi-Weekly</SelectItem>
-                  <SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="Annually">Annually</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              <Select name="paymentFrequency" value={formData.paymentFrequency} onValueChange={(value) => handleSelectChange('paymentFrequency', value)}><SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="Monthly">Monthly</SelectItem><SelectItem value="Bi-Weekly">Bi-Weekly</SelectItem><SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="Annually">Annually</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select></div>
             <div><Label htmlFor="termMonths">Loan Term (Months)</Label><Input id="termMonths" name="termMonths" type="number" value={formData.termMonths || ''} onChange={handleInputChange} placeholder="e.g., 360 for 30yr mortgage"/></div>
             <div><Label htmlFor="dueDate">Due Date / Maturity Date</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.dueDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" /> {formData.dueDate ? format(new Date(formData.dueDate + 'T00:00:00'), "PPP") : <span>Pick a date (optional)</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.dueDate ? new Date(formData.dueDate + 'T00:00:00') : undefined} onSelect={(date) => handleDateChange('dueDate', date)} initialFocus/></PopoverContent>
-                </Popover>
-            </div>
-            {/* TODO: Add fields for Assumed Payoff Date (could be auto-calculated or manual override) */}
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.dueDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" /> {formData.dueDate ? format(new Date(formData.dueDate + 'T00:00:00'), "PPP") : <span>Pick a date (optional)</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.dueDate ? new Date(formData.dueDate + 'T00:00:00') : undefined} onSelect={(date) => handleDateChange('dueDate', date)} initialFocus/></PopoverContent></Popover></div>
           </div>
-          <DialogFooter>
-            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-            <Button type="button" onClick={handleSaveDebt}>{editingDebt ? 'Save Changes' : 'Add Debt'}</Button>
-          </DialogFooter>
+          <DialogFooter><DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose><Button type="button" onClick={handleSaveDebt}>{editingDebt ? 'Save Changes' : 'Add Debt'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Upload Statement Dialog */}
-      <Dialog open={showStatementUploadDialog} onOpenChange={setShowStatementUploadDialog}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog open={showStatementUploadDialog} onOpenChange={(isOpen) => { if (!isOpen) { setRawSelectedFiles(null); setAnalyzedFiles([]); setOverallProgress(0); setIsAnalyzing(false); } setShowStatementUploadDialog(isOpen);}}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Upload Statement(s)</DialogTitle>
-            <DialogDescription>Select files, associate them with a debt account, and set the statement date.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Brain size={24} className="text-purple-500" />AI-Powered Statement Processor</DialogTitle>
+            <DialogDescription>Upload statement files (PDF, JPG, PNG). The AI will attempt to associate them with debt accounts and extract statement dates.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div>
-                <Label htmlFor="debtForStatement">Associate with Debt Account</Label>
-                <Select value={debtForStatement} onValueChange={setDebtForStatement}>
-                    <SelectTrigger id="debtForStatement"><SelectValue placeholder="Select debt account..." /></SelectTrigger>
-                    <SelectContent>
-                        {debts.map(debt => (<SelectItem key={debt.id} value={debt.id}>{debt.name}</SelectItem>))}
-                    </SelectContent>
-                </Select>
+          
+          {!analyzedFiles.length && (
+            <div className="py-4">
+              <Label htmlFor="statementBatchFile" className="mb-2 block font-semibold text-slate-700">Select Statement Files (Multiple Allowed)</Label>
+              <Input id="statementBatchFile" type="file" multiple onChange={handleFileSelectionForAnalysis} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100"/>
             </div>
-            <div>
-                <Label htmlFor="statementDateUpload">Statement Date / Period End Date</Label>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !statementDate && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />{statementDate ? format(statementDate, "PPP") : <span>Pick statement date</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={statementDate} onSelect={setStatementDate} initialFocus /></PopoverContent>
-                </Popover>
-            </div>
-            <div>
-                <Label htmlFor="statementFile">Statement File(s) (PDF, CSV, etc.)</Label>
-                <Input 
-                    id="statementFile" 
-                    type="file" 
-                    multiple // Allow multiple file selection
-                    onChange={(e) => setStatementFiles(e.target.files)} 
-                />
-            </div>
-            {statementFiles && statementFiles.length > 0 && (
-                <div className="mt-2 space-y-1 max-h-32 overflow-y-auto border p-2 rounded-md">
-                    <Label className="text-xs font-medium text-slate-500">Selected files:</Label>
-                    {Array.from(statementFiles).map((file, index) => (
-                        <div key={index} className="text-xs text-slate-700 bg-slate-100 p-1 rounded-sm truncate">
-                           <List size={12} className="inline mr-1.5" /> {file.name}
-                        </div>
-                    ))}
-                </div>
+          )}
+
+          {analyzedFiles.length > 0 && (
+            <>
+              <div className="flex-grow overflow-y-auto space-y-3 pr-2 -mr-2 my-4">
+                {analyzedFiles.map((item, index) => (
+                  <Card key={item.originalIndex} className={cn("p-3", item.processingStatus === 'error' && "bg-red-50 border-red-200", item.processingStatus === 'analyzed' && "bg-green-50 border-green-200")}>
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 pt-1">
+                        {item.processingStatus === 'pending' && <UploadCloud className="h-5 w-5 text-slate-400" />}
+                        {item.processingStatus === 'analyzing' && <Loader2 className="h-5 w-5 text-sky-500 animate-spin" />}
+                        {item.processingStatus === 'analyzed' && <Check className="h-5 w-5 text-green-600" />}
+                        {item.processingStatus === 'error' && <AlertTriangle className="h-5 w-5 text-red-600" />}
+                      </div>
+                      <div className="flex-grow">
+                        <p className="text-sm font-medium text-slate-800 truncate" title={item.file.name}>{item.file.name} <span className="text-xs text-slate-500">({(item.file.size / 1024).toFixed(1)} KB)</span></p>
+                        {item.processingStatus === 'analyzing' && <p className="text-xs text-sky-600">AI analyzing...</p>}
+                        {item.processingStatus === 'error' && <p className="text-xs text-red-600">{item.errorMessage || "Analysis failed."}</p>}
+                        {item.processingStatus === 'analyzed' && (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              <div>
+                                <Label htmlFor={`debtForFile-${index}`} className="text-xs">Suggested Debt Account</Label>
+                                <Select value={item.actualDebtId} onValueChange={(value) => handleAnalyzedFileFieldChange(index, 'actualDebtId', value)}>
+                                  <SelectTrigger id={`debtForFile-${index}`} className="h-9 text-xs"><SelectValue placeholder="Select debt..." /></SelectTrigger>
+                                  <SelectContent>
+                                    {debts.map(debt => (<SelectItem key={debt.id} value={debt.id} className="text-xs">{debt.name}</SelectItem>))}
+                                  </SelectContent>
+                                </Select>
+                                {item.suggestedDebtId && item.suggestedDebtId !== item.actualDebtId && <p className="text-xs text-purple-600 mt-0.5">AI suggested: {debts.find(d=>d.id === item.suggestedDebtId)?.name || 'Unknown'}</p>}
+                              </div>
+                              <div>
+                                <Label htmlFor={`dateForFile-${index}`} className="text-xs">Statement Date</Label>
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9 text-xs", !item.actualStatementDate && "text-muted-foreground")}><CalendarIcon className="mr-1.5 h-3.5 w-3.5" /> {item.actualStatementDate ? format(item.actualStatementDate, "PPP") : <span>Pick date</span>}</Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={item.actualStatementDate} onSelect={(date) => handleAnalyzedFileFieldChange(index, 'actualStatementDate', date)} initialFocus /></PopoverContent>
+                                </Popover>
+                                {item.suggestedStatementDate && format(item.actualStatementDate || new Date(0), "yyyy-MM-dd") !== item.suggestedStatementDate && <p className="text-xs text-purple-600 mt-0.5">AI suggested: {format(new Date(item.suggestedStatementDate + 'T00:00:00'), "PPP")}</p>}
+                              </div>
+                            </div>
+                            {item.ocrTextSnippet && <p className="text-xs text-slate-500 mt-1 truncate" title={item.ocrTextSnippet}>Snippet: "{item.ocrTextSnippet}" (Conf: {((item.confidence || 0) * 100).toFixed(0)}%)</p>}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+              {isAnalyzing && <Progress value={overallProgress} className="w-full h-2 mt-2 mb-1" />}
+              <p className="text-xs text-center text-slate-500 mb-2">{isAnalyzing ? `Analyzing file ${analyzedFiles.filter(f=>f.processingStatus === 'analyzing' || f.processingStatus === 'analyzed' || f.processingStatus === 'error').length} of ${analyzedFiles.length}... (${overallProgress}%)` : analyzedFiles.filter(f=>f.processingStatus==='analyzed').length > 0 ? 'Review AI suggestions and confirm.' : 'Ready to analyze.'}</p>
+            </>
+          )}
+
+          <DialogFooter className="mt-auto pt-4 border-t">
+            <DialogClose asChild><Button type="button" variant="outline" disabled={isAnalyzing}>Cancel</Button></DialogClose>
+            {analyzedFiles.length > 0 && !isAnalyzing && analyzedFiles.some(f=>f.processingStatus === 'pending') && (
+                <Button type="button" onClick={handleAnalyzeFiles} className="bg-purple-600 hover:bg-purple-700 text-white" disabled={isAnalyzing}>
+                  <Brain size={18} className="mr-2"/>Analyze Files with AI
+                </Button>
             )}
-          </div>
-          <DialogFooter>
-            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-            <Button type="button" onClick={handleUploadStatement} disabled={!statementFiles || statementFiles.length === 0 || !debtForStatement || !statementDate}>
-                Upload and Associate
-            </Button>
+            {analyzedFiles.length > 0 && !isAnalyzing && analyzedFiles.every(f => f.processingStatus === 'analyzed' || f.processingStatus === 'error') && (
+              <Button type="button" onClick={handleSaveAnalyzedStatements} disabled={isAnalyzing || analyzedFiles.every(f => f.processingStatus === 'error' || !f.actualDebtId || !f.actualStatementDate)}>
+                <Save size={18} className="mr-2" />Save All Processed Statements
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -565,4 +581,3 @@ const DebtTrackerPage = ({ pageId }: { pageId: string }) => {
 
 export default DebtTrackerPage;
 
-    
