@@ -46,15 +46,14 @@ export async function analyzeStatement(input: AnalyzeStatementInput): Promise<An
   return analyzeStatementFlow(input);
 }
 
-// This is a STUBBED prompt. A real implementation would involve more complex OCR and analysis.
 const prompt = ai.definePrompt({
   name: 'analyzeStatementPrompt',
   input: { schema: AnalyzeStatementInputSchema },
   output: { schema: AnalyzeStatementOutputSchema },
   prompt: `You are an expert financial document analyzer.
-Given the content of a financial statement (conceptually, from the fileDataUri, though you will not actually process the URI in this stub) and a list of existing debt accounts, your task is to:
-1. Identify which debt account the statement most likely belongs to from the 'existingDebtAccounts' list.
-2. Extract the statement date (period end date) from the document.
+Given the content of a financial statement, conceptually represented by the fileDataUri, and a list of existing debt accounts, your task is to:
+1. Identify which debt account the statement most likely belongs to from the 'existingDebtAccounts' list. Use the file name as a strong hint.
+2. Extract the statement date (period end date) from the document. If multiple dates are present, prefer the latest one that seems to be a statement period end date.
 
 File name (for context): {{{fileName}}}
 Known Debt Accounts:
@@ -62,28 +61,27 @@ Known Debt Accounts:
 - ID: {{id}}, Name: {{name}}
 {{/each}}
 
-Based on the (conceptual) content of the document, provide your best suggestion for the debt account ID and the statement date in YYYY-MM-DD format.
+Focus on analyzing the file name and any conceptual text patterns (you won't actually see the image/PDF content for this prompt, but reason based on typical statement structures).
+Provide your best suggestion for the debt account ID and the statement date in YYYY-MM-DD format.
 
-Provide a snippet of text that seems relevant for your decision.
-Provide a confidence score between 0 and 1.
+Provide a snippet of text that seems relevant for your decision (e.g., "Statement for account ending in 1234").
+Provide a confidence score between 0 and 1 for your suggestions.
 
-Example (for a different document):
-Statement for: "Commercial Mortgage - Main St", Account ending in 1234
-Statement Period: Jan 1, 2024 - Jan 31, 2024
-
-Expected output format:
+Example based on a document named "Mortgage_Statement_Jan2024.pdf" and an account "Commercial Mortgage - Main St":
 {
-  "suggestedDebtId": "debt_account_id_here",
-  "suggestedStatementDate": "YYYY-MM-DD",
-  "ocrTextSnippet": "Relevant text snippet here...",
+  "suggestedDebtId": "debt_account_id_of_Commercial_Mortgage_Main_St",
+  "suggestedStatementDate": "2024-01-31",
+  "ocrTextSnippet": "Extracted from filename: Mortgage_Statement_Jan2024.pdf",
   "confidence": 0.85
 }
 
 If you cannot determine the debt or date, return null for those fields.
-For this STUB, you will return a plausible but DUMMY suggestion.
-Do not attempt to process fileDataUri.
-If '{{{fileName}}}' contains 'mortgage', suggest the first debt ID. If it contains 'credit card', suggest the second.
-Suggest a date from last month.
+The document content is provided via a data URI: {{media url=fileDataUri}}
+However, for this task, you will prioritize textual analysis from the file name and any metadata, rather than direct image/PDF content processing.
+If the fileDataUri is a plain text file, you can use its content.
+If the file name contains 'mortgage', try to associate it with a mortgage-like account.
+If it contains 'credit' or 'card', try to associate it with a credit card account.
+If it contains a month and year, use that to infer the statement date (assume end of month).
 `,
 });
 
@@ -94,51 +92,29 @@ const analyzeStatementFlow = ai.defineFlow(
     outputSchema: AnalyzeStatementOutputSchema,
   },
   async (input) => {
-    // STUBBED LOGIC: In a real scenario, you'd send the fileDataUri to a model capable of OCR
-    // or use a separate OCR step and then send the text to an LLM.
-    // For now, we simulate this based on filename and known accounts.
+    console.log("AI Flow: Analyzing statement - ", input.fileName);
+    const { output } = await prompt(input); // Calling actual LLM
 
-    console.log("AI Flow STUB: Analyzing statement - ", input.fileName);
-    // const { output } = await prompt(input); // Calling actual LLM is disabled for this stub
-
-    // Dummy logic for stubbed response:
-    let suggestedDebtId: string | null = null;
-    let suggestedStatementDate: string | null = null;
-    const snippet = "Stubbed OCR text: Account Balance $1234.56. Statement Date: near today.";
-    let confidence = 0.7;
-
-    if (input.existingDebtAccounts.length > 0) {
-      if (input.fileName?.toLowerCase().includes('mortgage')) {
-        suggestedDebtId = input.existingDebtAccounts[0].id;
-      } else if (input.fileName?.toLowerCase().includes('credit') && input.existingDebtAccounts.length > 1) {
-        suggestedDebtId = input.existingDebtAccounts[1].id;
-      } else {
-         // Fallback to the first account if no keywords match or only one account exists
-        suggestedDebtId = input.existingDebtAccounts[0].id;
-      }
-    }
-    
-    const today = new Date();
-    const lastMonth = new Date(today.getFullYear(), today.getMonth() -1, 15); // 15th of last month
-    suggestedStatementDate = lastMonth.toISOString().split('T')[0];
-
-
-    const simulatedOutput: AnalyzeStatementOutput = {
-      suggestedDebtId,
-      suggestedStatementDate,
-      ocrTextSnippet: snippet,
-      confidence
-    };
-    
-    // Ensure the output matches the schema, even for a stub.
-    const parsedOutput = AnalyzeStatementOutputSchema.safeParse(simulatedOutput);
-    if (!parsedOutput.success) {
-      console.error("AI flow stub output failed Zod validation:", parsedOutput.error.flatten());
+    if (!output) {
+      console.error("AI flow did not return an output for:", input.fileName);
       // Fallback to a generic safe response or throw error
       return {
         suggestedDebtId: null,
         suggestedStatementDate: null,
-        ocrTextSnippet: "Error in stubbed AI processing.",
+        ocrTextSnippet: "AI model did not return an output.",
+        confidence: 0.1
+      };
+    }
+    
+    // Ensure the output matches the schema.
+    const parsedOutput = AnalyzeStatementOutputSchema.safeParse(output);
+    if (!parsedOutput.success) {
+      console.error("AI flow output failed Zod validation:", parsedOutput.error.flatten());
+      // Fallback to a generic safe response or throw error
+      return {
+        suggestedDebtId: null,
+        suggestedStatementDate: null,
+        ocrTextSnippet: "AI returned data in an unexpected format.",
         confidence: 0.1
       };
     }
