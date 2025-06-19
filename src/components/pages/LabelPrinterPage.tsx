@@ -47,7 +47,7 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
       htmlContent += '@page { size: 6in 4in; margin: 0; }'; // 6x4 inch label size
       htmlContent += 'body { margin: 0; padding: 0; width: 6in; height: 4in; display: flex; align-items: center; justify-content: center; overflow: hidden; }';
       // Increased font size significantly for a label, adjust as needed
-      htmlContent += ".label-text-container { font-family: 'Verdana', Arial, sans-serif; font-weight: bold; font-size: 2.5rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
+      htmlContent += ".label-text-container { font-family: 'Verdana', Arial, sans-serif; font-weight: bold; font-size: 2.75rem; text-align: center; line-height: 1.2; max-width: 90%; word-break: break-word; }";
       htmlContent += '</style></head><body>';
       htmlContent += '<div class="label-text-container">' + escapeHtml(labelText.trim()) + '</div>';
       htmlContent += '<script>';
@@ -120,7 +120,7 @@ const LabelPrinterPage = ({ pageId }: { pageId: string }) => {
                     fontFamily: "'Verdana', Arial, sans-serif",
                     fontWeight: 'bold',
                     // Scaled font size for preview, adjust this factor as needed for visual accuracy
-                    fontSize: `calc(2.5rem * 0.25)`, // Example: 25% of actual for preview
+                    fontSize: `calc(2.75rem * 0.25)`, // Example: 25% of actual for preview (matches the new print size)
                     lineHeight: '1.2',
                     maxWidth: '90%',
                   }}
