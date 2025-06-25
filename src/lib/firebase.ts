@@ -7,7 +7,7 @@ import { getFirestore } from 'firebase/firestore';
 // Your web app's Firebase configuration
 // IMPORTANT: Ensure your Firebase project's API key and other details are correct.
 const firebaseConfig = {
-  apiKey: "AIzaSyCRr0TJMnbbYgZO8u4VWgLmw5-oqu5Plsc",
+  apiKey: "YOUR_FIREBASE_API_KEY",
   authDomain: "journey-suite.firebaseapp.com",
   projectId: "journey-suite",
   storageBucket: "journey-suite.appspot.com", // Corrected to .appspot.com
@@ -39,4 +39,3 @@ const db = getFirestore(app);
 // 'your-project.web.app' or 'port-number-project-hash.cluster-id.cloudworkstations.dev').
 
 export { app, auth, db };
-
