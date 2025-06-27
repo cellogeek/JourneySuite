@@ -24,13 +24,14 @@ import CheckWriterPage from '@/components/pages/CheckWriterPage';
 import PayrollRunnerPage from '@/components/pages/PayrollRunnerPage';
 import SpecialOrdersPage from '@/components/pages/SpecialOrdersPage';
 import EnvelopePrinterPage from '@/components/pages/EnvelopePrinterPage';
-import LabelPrinterPage from '@/components/pages/LabelPrinterPage'; // Added LabelPrinterPage
+import LabelPrinterPage from '@/components/pages/LabelPrinterPage';
 import PurchaseOrdersPage from '@/components/pages/PurchaseOrdersPage';
 import CreatePurchaseOrderPage from '@/components/pages/CreatePurchaseOrderPage';
 import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage';
 import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage';
 import DebtTrackerPage from '@/components/pages/DebtTrackerPage';
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
+import GroceryListPage from '@/components/pages/GroceryListPage';
 import InventorySandboxPage from '@/components/pages/InventorySandboxPage';
 
 
@@ -121,7 +122,8 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Operations & Inventory',
     items: [
       { id: 'inventory', name: 'Inventory Master', icon: Boxes, title: 'Inventory Master Data', component: InventoryPage },
-      { id: 'inventory_sandbox', name: 'Inventory Sandbox', icon: Beaker, title: 'Inventory Sandbox', description: "Experiment with inventory items without affecting production data.", component: InventorySandboxPage },
+      { id: 'grocery_list', name: 'Grocery List', icon: ClipboardList, title: 'Grocery List', description: "A temporary list for groceries and other items.", component: GroceryListPage },
+      { id: 'inventory_sandbox', name: 'Inventory Sandbox', icon: Beaker, title: 'Inventory Co-Pilot', description: "Your central hub for managing inventory.", component: InventorySandboxPage },
       { id: 'weekly_inventory', name: 'Weekly Inventory', icon: ListChecks, title: 'Weekly Inventory Count', description: "Perform and record weekly inventory counts.", component: WeeklyInventoryPage },
       { id: 'create_purchase_order', name: 'Create PO', icon: ListPlus, title: 'Create Purchase Order', description: "Build a new purchase order for a vendor.", component: CreatePurchaseOrderPage },
       { id: 'purchase_orders', name: 'Manage POs', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
@@ -138,7 +140,7 @@ const navGroupsData: NavGroup[] = [
       { id: 'sales_tax_runner', name: 'Sales Tax Runner', icon: Percent, title: 'Sales Tax Runner', description: "Calculate and prepare sales tax reports for remittance.", component: SalesTaxRunnerPage },
       { id: 'check_writer', name: 'Check Printer', icon: Printer, title: 'Check Printer', description: "Generate and print checks for vendors and other payees.", component: CheckWriterPage },
       { id: 'envelope_printer', name: 'Envelope Printer', icon: Mail, title: 'Envelope Printer', description: "Design and print #10 envelopes or simple name-only envelopes.", component: EnvelopePrinterPage },
-      { id: 'label_printer', name: 'Label Printer', icon: Tags, title: 'Label Printer', description: "Generate and print 6x4 labels.", component: LabelPrinterPage }, // Added Label Printer
+      { id: 'label_printer', name: 'Label Printer', icon: Tags, title: 'Label Printer', description: "Generate and print 6x4 labels.", component: LabelPrinterPage },
       { id: 'analytics', name: 'Data Analytics', icon: BarChart3, title: 'Data Analytics', description: "Analyze sales trends, customer behavior, and operational efficiency.", component: GenericPlaceholderPage },
     ],
   },
