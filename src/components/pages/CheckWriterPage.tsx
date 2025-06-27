@@ -190,7 +190,7 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
     }
     console.warn("Could not parse check data from page. Text content:", pageText);
     return null;
-};
+  };
 
     // New function to handle the uploaded PDF file
     async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -388,3 +388,5 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default CheckWriterPage;
+
+    
