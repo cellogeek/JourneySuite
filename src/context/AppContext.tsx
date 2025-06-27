@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Banknote, UserPlus2, GraduationCap, Users, ListTodo,
   Boxes, Truck, LayoutGrid, Percent, Printer, BarChart3, HeartHandshake,
   CalendarDays, FileText, Settings, LifeBuoy, LogOut, Coffee, HomeIcon, ClipboardList, Mail,
-  ShoppingCart, ClipboardCheck, ListPlus, ListChecks, Landmark, Tags // Added Tags
+  ShoppingCart, ClipboardCheck, ListPlus, ListChecks, Landmark, Tags, Beaker
 } from 'lucide-react';
 // Firebase auth is not used for login/logout in this bypassed state, but db might be.
 // import { auth } from '@/lib/firebase';
@@ -31,6 +31,7 @@ import WeeklyInventoryPage from '@/components/pages/WeeklyInventoryPage';
 import SportLifePoCreatorPage from '@/components/pages/SportLifePoCreatorPage';
 import DebtTrackerPage from '@/components/pages/DebtTrackerPage';
 import GenericPlaceholderPage from '@/components/pages/GenericPlaceholderPage';
+import InventorySandboxPage from '@/components/pages/InventorySandboxPage';
 
 
 export interface NavItemStructure {
@@ -120,6 +121,7 @@ const navGroupsData: NavGroup[] = [
     groupLabel: 'Operations & Inventory',
     items: [
       { id: 'inventory', name: 'Inventory Master', icon: Boxes, title: 'Inventory Master Data', component: InventoryPage },
+      { id: 'inventory_sandbox', name: 'Inventory Sandbox', icon: Beaker, title: 'Inventory Sandbox', description: "Experiment with inventory items without affecting production data.", component: InventorySandboxPage },
       { id: 'weekly_inventory', name: 'Weekly Inventory', icon: ListChecks, title: 'Weekly Inventory Count', description: "Perform and record weekly inventory counts.", component: WeeklyInventoryPage },
       { id: 'create_purchase_order', name: 'Create PO', icon: ListPlus, title: 'Create Purchase Order', description: "Build a new purchase order for a vendor.", component: CreatePurchaseOrderPage },
       { id: 'purchase_orders', name: 'Manage POs', icon: ClipboardCheck, title: 'Purchase Orders', description: "Create, manage, and track vendor purchase orders.", component: PurchaseOrdersPage },
