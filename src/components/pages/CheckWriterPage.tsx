@@ -171,8 +171,8 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
     const payeeRegex = /TO\s+([A-Za-z\s]+)\n/;
     const amountRegex = /Amount: \$(.+)/;
     const dateRegex = /Date: (.+)/;
-    // The memo can be derived from the pay period
-    const memoRegex = /Pay period: (.+)/;
+    // Capture the entire "Pay period" line for the memo
+    const memoRegex = /(Pay period: .+)/;
 
     const payeeMatch = pageText.match(payeeRegex);
     const amountMatch = pageText.match(amountRegex);
@@ -185,7 +185,7 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
             payee: payeeMatch[1].trim(),
             amount: amountMatch[1].trim(),
             date: dateMatch[1].trim(),
-            memo: memoMatch ? `Pay Period: ${memoMatch[1].trim()}` : 'Payroll',
+            memo: memoMatch ? memoMatch[1].trim() : 'Payroll',
         };
     }
     console.warn("Could not parse check data from page. Text content:", pageText);
@@ -388,5 +388,3 @@ const CheckWriterPage = ({ pageId }: { pageId: string }) => {
 };
 
 export default CheckWriterPage;
-
-    
